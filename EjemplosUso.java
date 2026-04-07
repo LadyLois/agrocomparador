@@ -44,7 +44,7 @@ public class EjemplosUso {
     
     // Ejemplo 3: Filtrar productos por nombre
     public void ejemplo3_FiltrarProductos() {
-        j java.util.List<java.util.Map<String, Object>> productos = 
+        java.util.List<java.util.Map<String, Object>> productos = 
             agrocomparador.business.ProductoService.obtenerProductosPorNombre("Tomate");
         
         System.out.println("Productos encontrados: " + productos.size());

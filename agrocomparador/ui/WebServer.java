@@ -14,7 +14,10 @@ import java.util.*;
  * - GET /?producto=Tomate : Muestra productos filtrados por nombre
  */
 public class WebServer {
-    private static final int PUERTO = 80;
+    // Puerto configurable desde variable de entorno (por defecto 8080)
+    private static final int PUERTO = Integer.parseInt(
+        System.getenv().getOrDefault("PORT", "8080")
+    );
     
     /**
      * Inicia el servidor web
@@ -23,7 +26,7 @@ public class WebServer {
     public static void iniciar() throws Exception {
         ServerSocket server = new ServerSocket(PUERTO);
         System.out.println("🚀 Servidor iniciado en puerto " + PUERTO);
-        System.out.println("📍 Accede a: http://localhost/");
+        System.out.println("📍 Accede a: http://localhost:" + PUERTO + "/");
         
         while (true) {
             Socket cliente = server.accept();
@@ -39,7 +42,7 @@ public class WebServer {
     private static void manejarSolicitud(Socket cliente) {
         try {
             // Leer la solicitud HTTP
-            BufferedReader entrada = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
+            BufferedReader entrada = new BufferedReader(new InputStreamReader(cliente.getInputStream(), "UTF-8"));
             String primeraLinea = entrada.readLine();
             
             if (primeraLinea == null) {

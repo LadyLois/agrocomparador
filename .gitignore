@@ -1,0 +1,178 @@
+# ============================================
+# 🔒 SEGURIDAD - ARCHIVOS CON CREDENCIALES
+# ============================================
+# NUNCA COMITEAR ARCHIVOS CON CONTRASEÑAS
+.env
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+.env.*.prod
+
+# ============================================
+# 🔑 SECRETOS Y CONFIGURACIÓN SENSIBLE
+# ============================================
+# AWS Credentials y secretos
+aws-credentials
+~/.aws/
+credentials.json
+.aws/credentials
+.aws/config
+secrets.json
+secrets.*.json
+
+# Archivos de secretos
+*.secret
+*.key
+*.pem
+*.pfx
+*.p12
+*.keystore
+
+# Base de datos local (si aplica)
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# ============================================
+# 📝 LOGS Y ARCHIVOS DE SALIDA
+# ============================================
+*.log
+*.out
+nohup.out
+output.log
+debug.log
+error.log
+/logs/
+/log/
+
+# ============================================
+# 🔨 ARCHIVOS COMPILADOS (NO INCLUIR)
+# ============================================
+*.class
+*.o
+*.so
+*.jar
+!mysql-connector-java-9.0.0.jar
+# Nota: mysql-connector-java-9.0.0.jar es PERMITIDO (dependencia pública)
+
+# Directorios compilados
+/target/
+/bin/
+/build/
+/dist/
+/out/
+
+# ============================================
+# 🛠️ IDE Y EDITORES
+# ============================================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Eclipse
+.classpath
+.project
+.settings/
+*.launch
+
+# NetBeans
+.nb-gradle/
+.netbeans/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Otros editores
+*.bak
+*.tmp
+*~
+
+# ============================================
+# 🖥️ SISTEMA OPERATIVO
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.~lock*
+
+# ============================================
+# 📦 DEPENDENCIAS Y DIRECTORIOS TEMPORALES
+# ============================================
+# Maven
+/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# Gradle
+/.gradle/
+/build/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradle/
+
+# npm / Node (si se usa en futuro)
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Archivos temporales
+/temp/
+/tmp/
+*.temp
+*.tmp
+
+# ============================================
+# 🚫 ARCHIVOS DE TEST Y DEBUG
+# ============================================
+# Archivos de test que se generan
+/test-output/
+/test-reports/
+*.test.out
+
+# DEBUG
+debug/
+.debug
+*.debug
+
+# ============================================
+# 📋 ARCHIVOS QUE SÍ INCLUIR EN GIT
+# ============================================
+# (Estos NO se ignoran)
+!.gitignore
+!.gitattributes
+!README.md
+!LICENSE
+!*.java
+!*.sql
+!*.md
+!.env.example
+!.env.production.example
+!mysql-connector-java-9.0.0.jar

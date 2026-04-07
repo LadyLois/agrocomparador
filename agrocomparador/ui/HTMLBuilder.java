@@ -170,7 +170,7 @@ public class HTMLBuilder {
                    htmlContent;
         } catch (Exception e) {
             return "HTTP/1.1 500 Internal Server Error\r\n" +
-                   "Content-Type: text/plain\r\n" +
+                   "Content-Type: text/plain; charset=UTF-8\r\n" +
                    "\r\n" +
                    "Error: " + e.getMessage();
         }
