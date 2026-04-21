@@ -120,6 +120,17 @@ $RECYCLE.BIN/
 .~lock*
 
 # ============================================
+# 💻 SCRIPTS DE DESARROLLO LOCAL (CON CREDENCIALES)
+# ============================================
+# Archivos .bat y .ps1 con variables de entorno/contraseñas
+# Solo para desarrollo local en Windows
+run-simple.bat
+run.bat
+setup-env.bat
+*.local.bat
+*.local.ps1
+
+# ============================================
 # 📦 DEPENDENCIAS Y DIRECTORIOS TEMPORALES
 # ============================================
 # Maven
