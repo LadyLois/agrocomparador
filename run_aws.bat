@@ -14,7 +14,7 @@ setlocal enabledelayedexpansion
 
 set "DB_HOST=localhost"
 set "DB_PORT=3306"
-set "DB_NAME=comparador"
+set "DB_NAME=agrocomparador"
 set "DB_USER=admin"
 set "DB_PASSWORD="
 set "PORT=8080"
