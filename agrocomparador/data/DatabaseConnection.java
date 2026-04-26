@@ -26,7 +26,7 @@ public class DatabaseConnection {
     private static final String DB_PASSWORD = getRequiredEnv("DB_PASSWORD");
     
     // Variables con valores por defecto (no sensibles)
-    private static final String DB_NAME = getEnv("DB_NAME", "comparador");
+    private static final String DB_NAME = getEnv("DB_NAME", "agrocomparador");
     private static final String DB_PORT = getEnv("DB_PORT", "3306");
     
     private static final String URL = String.format(
