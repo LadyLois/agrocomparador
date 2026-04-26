@@ -2,7 +2,7 @@
 
 ## 📋 Requisitos Previos
 
-✅ Tienes BD local MySQL en ejecución (`comparador`)
+✅ Tienes BD local MySQL en ejecución (`agrocomparador`)
 ✅ AWS EC2 instancia creada con MySQL instalado
 ✅ Acceso SSH a tu EC2 (archivo .pem guardado)
 ✅ Security Group de EC2 permite:
@@ -22,13 +22,13 @@
 cd c:\Java\agrocomparador
 
 # Exportar toda la BD local a archivo SQL
-mysql -h localhost -u admin -p comparador > backup_comparador.sql
+mysql -h localhost -u admin -p agrocomparador > backup_comparador.sql
 # Te pedirá contraseña: AgroComparador2026!
 ```
 
 **Alternativa (Windows CMD):**
 ```cmd
-mysqldump -h localhost -u admin -p --databases comparador > backup_comparador.sql
+mysqldump -h localhost -u admin -p --databases agrocomparador > backup_comparador.sql
 ```
 
 **Verificar que el archivo se creó:**
@@ -69,13 +69,13 @@ ssh -i $PEM_FILE ${AWS_USER}@${EC2_IP}
 **Una vez en EC2, importar la BD:**
 ```bash
 # Crear BD vacía primero
-mysql -h localhost -u admin -p -e "CREATE DATABASE IF NOT EXISTS comparador CHARACTER SET utf8 COLLATE utf8_general_ci;"
+mysql -h localhost -u admin -p -e "CREATE DATABASE IF NOT EXISTS agrocomparador CHARACTER SET utf8 COLLATE utf8_general_ci;"
 
 # Importar datos desde el backup
-mysql -h localhost -u admin -p comparador < /tmp/backup_comparador.sql
+mysql -h localhost -u admin -p agrocomparador < /tmp/backup_comparador.sql
 
 # Verificar que se importó correctamente
-mysql -h localhost -u admin -p comparador -e "SELECT COUNT(*) as total_productos FROM productos; SELECT COUNT(*) as total_precios FROM precios;"
+mysql -h localhost -u admin -p agrocomparador -e "SELECT COUNT(*) as total_productos FROM productos; SELECT COUNT(*) as total_precios FROM precios;"
 ```
 
 ---
@@ -93,7 +93,7 @@ mysqldump -h localhost -u admin -p `
   --default-character-set=utf8mb4 `
   --single-transaction `
   --lock-tables=false `
-  comparador > backup_completo_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').sql
+  agrocomparador > backup_completo_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').sql
 ```
 
 ### Paso 2️⃣: Comprimir para transferencia rápida
@@ -114,7 +114,7 @@ ssh -i $PEM_FILE ${AWS_USER}@${EC2_IP}
 
 # Dentro de EC2
 gunzip /tmp/backup_comparador.sql.gz
-mysql -h localhost -u admin -p comparador < /tmp/backup_comparador.sql
+mysql -h localhost -u admin -p agrocomparador < /tmp/backup_comparador.sql
 ```
 
 ---
@@ -125,12 +125,12 @@ mysql -h localhost -u admin -p comparador < /tmp/backup_comparador.sql
 
 ```bash
 # En tu EC2, directamente desde Windows BD
-mysqldump -h YOUR_LOCAL_IP -u admin -p comparador | \
-  mysql -h localhost -u admin -p comparador
+mysqldump -h YOUR_LOCAL_IP -u admin -p agrocomparador | \
+  mysql -h localhost -u admin -p agrocomparador
 
 # O en PowerShell Windows (si MySQL está en Path):
-mysqldump -h localhost -u admin -p comparador | `
-  mysql -h tu-ec2-private-ip.compute-1.amazonaws.com -u admin -p comparador
+mysqldump -h localhost -u admin -p agrocomparador | `
+  mysql -h tu-ec2-private-ip.compute-1.amazonaws.com -u admin -p agrocomparador
 ```
 
 ---
@@ -141,7 +141,7 @@ mysqldump -h localhost -u admin -p comparador | `
 
 ```bash
 # 1️⃣ Conectar a BD
-mysql -h localhost -u admin -p comparador
+mysql -h localhost -u admin -p agrocomparador
 
 # 2️⃣ Dentro de MySQL, ejecuta:
 SQL> SHOW TABLES;
@@ -171,7 +171,7 @@ sudo nano /etc/environment
 # Agregar:
 DB_HOST="localhost"
 DB_PORT="3306"
-DB_NAME="comparador"
+DB_NAME="agrocomparador"
 DB_USER="admin"
 DB_PASSWORD="tu_password_aqui"
 PORT="8080"
@@ -191,7 +191,7 @@ source /etc/environment
 #!/bin/bash
 export DB_HOST=localhost
 export DB_PORT=3306
-export DB_NAME=comparador
+export DB_NAME=agrocomparador
 export DB_USER=admin
 export DB_PASSWORD="tu_password"
 export PORT=8080
@@ -213,7 +213,7 @@ Si prefieres usar **AWS RDS MySQL** (en lugar de MySQL en EC2):
 # Variables para RDS
 export DB_HOST="agrocomparador-prod.xxxxx.us-east-1.rds.amazonaws.com"
 export DB_PORT="3306"
-export DB_NAME="comparador"
+export DB_NAME="agrocomparador"
 export DB_USER="admin"
 export DB_PASSWORD="contraseña_rds"
 export PORT="8080"
@@ -268,7 +268,7 @@ sudo systemctl restart mysql
 ### Error: "Character set 'utf8' is not valid"
 ```bash
 # En el comando mysqldump, usar utf8mb4:
-mysqldump --default-character-set=utf8mb4 comparador > backup.sql
+mysqldump --default-character-set=utf8mb4 agrocomparador > backup.sql
 ```
 
 ---
@@ -288,16 +288,16 @@ mysqldump --default-character-set=utf8mb4 comparador > backup.sql
 
 ```powershell
 # 1. Exportar en Windows
-mysqldump -h localhost -u admin -p comparador > backup.sql
+mysqldump -h localhost -u admin -p agrocomparador > backup.sql
 
 # 2. Copiar a EC2
 scp -i tu-key.pem backup.sql ec2-user@tu-ec2-ip:/tmp/
 
 # 3. Importar en EC2
 ssh -i tu-key.pem ec2-user@tu-ec2-ip
-mysql -h localhost -u admin -p comparador < /tmp/backup.sql
+mysql -h localhost -u admin -p agrocomparador < /tmp/backup.sql
 
 # 4. Verificar en EC2
-mysql -h localhost -u admin -p comparador -e "SELECT COUNT(*) FROM productos;"
+mysql -h localhost -u admin -p agrocomparador -e "SELECT COUNT(*) FROM productos;"
 ```
 

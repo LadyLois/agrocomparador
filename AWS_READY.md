@@ -9,7 +9,7 @@ La aplicación ahora soporta **variables de entorno** para todos los parámetros
 # Variables de Base de Datos
 DB_HOST          # Host de MySQL (ej: localhost o RDS endpoint)
 DB_PORT          # Puerto (defecto: 3306)
-DB_NAME          # Nombre de BD (defecto: comparador)
+DB_NAME          # Nombre de BD (defecto: agrocomparador)
 DB_USER          # Usuario MySQL (defecto: admin)
 DB_PASSWORD      # Contraseña MySQL (defecto: AgroComparador2026! - CAMBIAR EN PROD)
 
@@ -47,7 +47,7 @@ java -cp ".;mysql-connector-java-9.0.0.jar" agrocomparador
 
 ### 2. Inicializar BD en RDS
 ```bash
-mysql -h [RDS_ENDPOINT] -u admin -p comparador < crear_base_datos.sql
+mysql -h [RDS_ENDPOINT] -u admin -p agrocomparador < crear_base_datos.sql
 java -cp ".;mysql-connector-java-9.0.0.jar" InsertarDatos
 ```
 
@@ -57,7 +57,7 @@ java -cp ".;mysql-connector-java-9.0.0.jar" InsertarDatos
 cat > .env.production << EOF
 DB_HOST=agrocomparador-prod.xxxxx.us-east-1.rds.amazonaws.com
 DB_PORT=3306
-DB_NAME=comparador
+DB_NAME=agrocomparador
 DB_USER=admin
 DB_PASSWORD=tu_password_segura
 PORT=8080

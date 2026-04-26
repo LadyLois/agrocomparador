@@ -125,7 +125,7 @@ git secrets --register-aws
 | DB_USER | ✅ SÍ | ❌ NO | `admin` |
 | DB_PASSWORD | ✅ SÍ | ❌ NO | `(desde Secrets Manager)` |
 | DB_PORT | ❌ NO | `3306` | `3306` |
-| DB_NAME | ❌ NO | `comparador` | `comparador` |
+| DB_NAME | ❌ NO | `agrocomparador` | `agrocomparador` |
 | PORT | ❌ NO | `8080` | `8080` |
 
 ---

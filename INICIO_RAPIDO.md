@@ -37,7 +37,7 @@ java agrocomparador
 Abre: **http://localhost/**
 
 Deberías ver:
-- ✅ Título "🌾 Comparador de Precios Agrícolas"
+- ✅ Título "🌾 agrocomparador de Precios Agrícolas"
 - ✅ Tabla con columnas: Producto | Variedad | Fuente | Precio
 - ✅ Formulario de búsqueda
 - ✅ Cantidad de registros
@@ -71,7 +71,7 @@ java -cp ".;mysql-connector-java-*.jar" agrocomparador
 **Solución:**
 1. Verificar MySQL esté corriendo
 2. Editar `agrocomparador/data/DatabaseConnection.java`
-3. Verificar credenciales y base de datos "comparador" existe
+3. Verificar credenciales y base de datos "agrocomparador" existe
 
 ### Tabla vacía en navegador
 **Solución:** Insertar datos de ejemplo (ver README.md)

@@ -14,7 +14,7 @@ $EC2_IP = "ec2-XX-XX-XX-XX.compute-1.amazonaws.com"
 $PEM_FILE = "C:\path\a\tu-key.pem"
 
 # Paso 1: Exportar
-mysqldump -h localhost -u admin -p comparador > backup.sql
+mysqldump -h localhost -u admin -p agrocomparador > backup.sql
 
 # Paso 2: Transferir
 scp -i $PEM_FILE backup.sql ec2-user@${EC2_IP}:/tmp/
@@ -24,11 +24,11 @@ ssh -i $PEM_FILE ec2-user@${EC2_IP}
 
 # ↓ YA ESTÁS EN EC2, ejecuta esto: ↓
 
-mysql -h localhost -u admin -p -e "CREATE DATABASE comparador CHARACTER SET utf8mb4;"
-mysql -h localhost -u admin -p comparador < /tmp/backup.sql
+mysql -h localhost -u admin -p -e "CREATE DATABASE agrocomparador CHARACTER SET utf8mb4;"
+mysql -h localhost -u admin -p agrocomparador < /tmp/backup.sql
 
 # Verificar
-mysql -h localhost -u admin -p comparador -e "SELECT COUNT(*) FROM productos;"
+mysql -h localhost -u admin -p agrocomparador -e "SELECT COUNT(*) FROM productos;"
 
 # Listo ✅
 ```
@@ -43,7 +43,7 @@ mysql -h localhost -u admin -p comparador -e "SELECT COUNT(*) FROM productos;"
 export DB_HOST=localhost
 export DB_USER=admin
 export DB_PASSWORD=tu_password
-export DB_NAME=comparador
+export DB_NAME=agrocomparador
 
 java -cp ".:mysql-connector-java-9.0.0.jar" agrocomparador
 ```

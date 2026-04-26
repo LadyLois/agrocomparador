@@ -73,7 +73,7 @@
 - [ ] MySQL instalado en EC2
 - [ ] SSH key (.pem) descargado
 - [ ] Archivo .pem tiene permisos correctos (400)
-- [ ] BD local 'comparador' existe y tiene datos
+- [ ] BD local 'agrocomparador' existe y tiene datos
 - [ ] MySQL client en tu PC está en PATH
 - [ ] PowerShell 5.1+ (para scripts)
 - [ ] Security Group de EC2 permite puerto 22

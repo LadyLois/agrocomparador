@@ -12,7 +12,7 @@ echo ""
 # ===== CONFIGURACIÓN =====
 DB_HOST="localhost"
 DB_USER="admin"
-DB_NAME="comparador"
+DB_NAME="agrocomparador"
 BACKUP_DIR="/tmp"
 
 # ===== VARIABLES INTERNAS =====

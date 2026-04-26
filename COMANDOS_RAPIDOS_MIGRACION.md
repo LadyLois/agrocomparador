@@ -22,13 +22,13 @@ chmod +x /tmp/3_IMPORTAR_EN_EC2.sh
 ### En tu PC (Windows PowerShell)
 
 # Exportar
-mysqldump -h localhost -u admin -p comparador > C:\Java\agrocomparador\backups\backup.sql
+mysqldump -h localhost -u admin -p agrocomparador > C:\Java\agroagrocomparador\backups\backup.sql
 
 # Comprimir (opcional)
-tar -czf C:\Java\agrocomparador\backups\backup.sql.gz C:\Java\agrocomparador\backups\backup.sql
+tar -czf C:\Java\agroagrocomparador\backups\backup.sql.gz C:\Java\agroagrocomparador\backups\backup.sql
 
 # Transferir
-scp -i tu-key.pem C:\Java\agrocomparador\backups\backup.sql ec2-user@tu-ec2-dns:/tmp/
+scp -i tu-key.pem C:\Java\agroagrocomparador\backups\backup.sql ec2-user@tu-ec2-dns:/tmp/
 
 ### En EC2 (SSH)
 
@@ -36,13 +36,13 @@ scp -i tu-key.pem C:\Java\agrocomparador\backups\backup.sql ec2-user@tu-ec2-dns:
 gunzip /tmp/backup.sql.gz
 
 # Crear BD
-mysql -h localhost -u admin -p -e "CREATE DATABASE comparador CHARACTER SET utf8mb4;"
+mysql -h localhost -u admin -p -e "CREATE DATABASE agrocomparador CHARACTER SET utf8mb4;"
 
 # Importar
-mysql -h localhost -u admin -p comparador < /tmp/backup.sql
+mysql -h localhost -u admin -p agrocomparador < /tmp/backup.sql
 
 # Verificar
-mysql -h localhost -u admin -p comparador -e "SELECT COUNT(*) as total FROM productos;"
+mysql -h localhost -u admin -p agrocomparador -e "SELECT COUNT(*) as total FROM productos;"
 
 
 ## 🔧 CONFIGURAR APLICACIÓN PARA USAR BD REMOTA
@@ -52,26 +52,26 @@ mysql -h localhost -u admin -p comparador -e "SELECT COUNT(*) as total FROM prod
 # Variables de entorno
 export DB_HOST=localhost              # O tu RDS endpoint si usas RDS
 export DB_PORT=3306
-export DB_NAME=comparador
+export DB_NAME=agroagrocomparador
 export DB_USER=admin
 export DB_PASSWORD=tu_password
 export PORT=8080
 
 # Ejecutar aplicación
-java -cp ".;mysql-connector-java-9.0.0.jar" agrocomparador
+java -cp ".;mysql-connector-java-9.0.0.jar" agroagrocomparador
 
 ### Opción B: Crear archivo .env en EC2
 
-# /home/ec2-user/agrocomparador/.env
+# /home/ec2-user/agroagrocomparador/.env
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=comparador
+DB_NAME=agroagrocomparador
 DB_USER=admin
 DB_PASSWORD=tu_password
 PORT=8080
 
 # Ejecutar con source
-source .env && java -cp ".;mysql-connector-java-9.0.0.jar" agrocomparador
+source .env && java -cp ".;mysql-connector-java-9.0.0.jar" agroagrocomparador
 
 
 ## 📋 FORMATO DE ARCHIVO BACKUP RECOMENDADO
@@ -85,7 +85,7 @@ mysqldump -h localhost -u admin -p \
   --quick \
   --add-locks=false \
   --no-tablespaces \
-  comparador > backup.sql
+  agroagrocomparador > backup.sql
 
 
 ## ❓ USAR RDS AMAZON EN LUGAR DE MYSQL EN EC2
@@ -98,7 +98,7 @@ mysqldump -h localhost -u admin -p \
 
 # Crear RDS MySQL:
 aws rds create-db-instance \
-  --db-instance-identifier agrocomparador-mysql \
+  --db-instance-identifier agroagrocomparador-mysql \
   --db-instance-class db.t3.micro \
   --engine mysql \
   --engine-version 8.0 \
@@ -109,12 +109,12 @@ aws rds create-db-instance \
   --region us-east-1
 
 # Luego transferir datos igual
-mysqldump -u admin -p comparador | \
-  mysql -h agrocomparador-mysql.xxxxx.us-east-1.rds.amazonaws.com -u admin -p comparador
+mysqldump -u admin -p agrocomparador | \
+  mysql -h agroagrocomparador-mysql.xxxxx.us-east-1.rds.amazonaws.com -u admin -p agrocomparador
 
 # Y en tu aplicación usar:
-export DB_HOST=agrocomparador-mysql.xxxxx.us-east-1.rds.amazonaws.com
-java -cp ".;mysql-connector-java-9.0.0.jar" agrocomparador
+export DB_HOST=agroagrocomparador-mysql.xxxxx.us-east-1.rds.amazonaws.com
+java -cp ".;mysql-connector-java-9.0.0.jar" agroagrocomparador
 
 
 ## 🆘 TROUBLESHOOTING
@@ -147,10 +147,10 @@ sudo systemctl restart mysql
 
 ### "Character set issues"
 # Verificar en EC2:
-mysql -h localhost -u admin -p comparador -e "SHOW CREATE TABLE productos;"
+mysql -h localhost -u admin -p agroagrocomparador -e "SHOW CREATE TABLE productos;"
 
 # Convertir si es necesario:
-mysql -h localhost -u admin -p comparador -e "ALTER DATABASE comparador CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -h localhost -u admin -p agroagrocomparador -e "ALTER DATABASE agroagrocomparador CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 ### "Out of memory during import"
 # Aumentar recursos en EC2:
@@ -160,7 +160,7 @@ mysql -h localhost -u admin -p comparador -e "ALTER DATABASE comparador CHARACTE
 ## 📊 VALIDACIÓN POST-MIGRACIÓN
 
 # En EC2, verificar:
-mysql -h localhost -u admin -p comparador << 'EOF'
+mysql -h localhost -u admin -p agroagrocomparador << 'EOF'
 SHOW TABLES;
 SELECT COUNT(*) as total_productos FROM productos;
 SELECT COUNT(*) as total_fuentes FROM fuentes;

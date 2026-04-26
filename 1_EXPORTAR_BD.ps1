@@ -14,7 +14,7 @@ $BACKUP_FILE = "$BACKUP_DIR\backup_comparador_$TIMESTAMP.sql"
 $BACKUP_COMPRESSED = "$BACKUP_FILE.gz"
 $DB_HOST = "localhost"
 $DB_USER = "admin"
-$DB_NAME = "comparador"
+$DB_NAME = "agrocomparador"
 
 # Crear carpeta de backups si no existe
 if (!(Test-Path $BACKUP_DIR)) {

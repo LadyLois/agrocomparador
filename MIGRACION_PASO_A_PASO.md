@@ -8,7 +8,7 @@
 
 ✅ **Local (tu PC):**
 - MySQL instalado (`mysql` y `mysqldump` en PATH)
-- BD `comparador` creada con datos
+- BD `agrocomparador` creada con datos
 - PowerShell 5.1+ con acceso a herramientas (scp, ssh)
 
 ✅ **AWS EC2:**
@@ -50,7 +50,7 @@ mysqldump -h localhost -u admin -p `
   --default-character-set=utf8mb4 `
   --single-transaction `
   --lock-tables=false `
-  comparador > backup_comparador.sql
+  agrocomparador > backup_comparador.sql
 
 # Cuando pida contraseña: AgroComparador2026! (o tu contraseña)
 ```
@@ -107,13 +107,13 @@ ls -lh /tmp/backup_comparador.sql
 
 **Crear la BD:**
 ```bash
-mysql -h localhost -u admin -p -e "CREATE DATABASE IF NOT EXISTS comparador CHARACTER SET utf8mb4;"
+mysql -h localhost -u admin -p -e "CREATE DATABASE IF NOT EXISTS agrocomparador CHARACTER SET utf8mb4;"
 ```
 *Ingresa contraseña MySQL cuando pida*
 
 **Importar los datos:**
 ```bash
-mysql -h localhost -u admin -p comparador < /tmp/backup_comparador.sql
+mysql -h localhost -u admin -p agrocomparador < /tmp/backup_comparador.sql
 ```
 *De nuevo, ingresa contraseña MySQL*
 
@@ -125,7 +125,7 @@ mysql -h localhost -u admin -p comparador < /tmp/backup_comparador.sql
 
 ```bash
 # Conectar a MySQL y verificar
-mysql -h localhost -u admin -p comparador
+mysql -h localhost -u admin -p agrocomparador
 ```
 
 **Dentro de MySQL:**
@@ -150,7 +150,7 @@ EXIT;
 # En el archivo ~/.bashrc o como variables globales
 export DB_HOST=localhost              
 export DB_PORT=3306
-export DB_NAME=comparador
+export DB_NAME=agrocomparador
 export DB_USER=admin
 export DB_PASSWORD=tu_password_mysql
 export PORT=8080
@@ -174,7 +174,7 @@ nano /home/ec2-user/.env
 # Agregar:
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=comparador
+DB_NAME=agrocomparador
 DB_USER=admin
 DB_PASSWORD=tu_password
 PORT=8080
@@ -191,7 +191,7 @@ source .env && java -cp ".;mysql-connector-java-9.0.0.jar" agrocomparador
 ```bash
 export DB_HOST="agrocomparador-prod.xxxxx.us-east-1.rds.amazonaws.com"
 export DB_PORT="3306"
-export DB_NAME="comparador"
+export DB_NAME="agrocomparador"
 export DB_USER="admin"
 export DB_PASSWORD="tu_password_rds"
 export PORT="8080"
@@ -285,7 +285,7 @@ sudo systemctl restart mysql
 ### Error: "Character set 'utf8' is not valid"
 ```bash
 # Asegúrate de usar utf8mb4:
-mysqldump --default-character-set=utf8mb4 comparador > backup.sql
+mysqldump --default-character-set=utf8mb4 agrocomparador > backup.sql
 ```
 
 ---
@@ -297,7 +297,7 @@ mysqldump --default-character-set=utf8mb4 comparador > backup.sql
 | Exportar | `mysqldump ... > backup.sql` | Tu PC |
 | Transferir | `scp ... backup.sql ec2:` | Tu PC |
 | Importar | `mysql ... < backup.sql` | EC2 SSH |
-| Verificar | `mysql -e "SELECT COUNT(...)" comparador` | EC2 SSH |
+| Verificar | `mysql -e "SELECT COUNT(...)" agrocomparador` | EC2 SSH |
 | Ejecutar app | `java ... agrocomparador` | EC2 SSH |
 
 ---
