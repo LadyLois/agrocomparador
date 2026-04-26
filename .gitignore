@@ -187,3 +187,4 @@ debug/
 !.env.example
 !.env.production.example
 !mysql-connector-java-9.0.0.jar
+*.sql
