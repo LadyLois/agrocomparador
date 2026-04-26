@@ -182,7 +182,6 @@ debug/
 !README.md
 !LICENSE
 !*.java
-!*.sql
 !*.md
 !.env.example
 !.env.production.example
