@@ -1,4 +1,4 @@
-# AgroComparador - Comparador de Precios Agrícolas
+# AgroComparador - agrocomparador de Precios Agrícolas
 
 Una aplicación web Java simple que compara precios de productos agrícolas consultando una base de datos MySQL, con arquitectura de **3 capas bien separadas**.
 
@@ -6,7 +6,7 @@ Una aplicación web Java simple que compara precios de productos agrícolas cons
 
 ### Requisitos
 - Java 8 o superior
-- MySQL 5.7+ con base de datos `comparador` configurada
+- MySQL 5.7+ con base de datos `agrocomparador` configurada
 - Driver JDBC MySQL (mysql-connector-java)
 
 ### Compilar
@@ -93,7 +93,7 @@ Consulta [ESTRUCTURA.md](ESTRUCTURA.md) para una documentación detallada.
 
 ### Crear Base de Datos
 ```sql
-CREATE DATABASE comparador;
+CREATE DATABASE agrocomparador;
 
 CREATE TABLE productos (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -147,7 +147,7 @@ INSERT INTO precios (producto_id, fuente_id, precio, fecha) VALUES
 ### Configuración de Conexión
 Edita `agrocomparador/data/DatabaseConnection.java`:
 ```java
-private static final String URL = "jdbc:mysql://localhost:3306/comparador";
+private static final String URL = "jdbc:mysql://localhost:3306/agrocomparador";
 private static final String USER = "admin";
 private static final String PASSWORD = "AgroComparador2026!";
 ```
@@ -201,7 +201,7 @@ taskkill /PID <PID> /F
 **Solución:**
 1. Verificar que MySQL esté corriendo
 2. Verificar credenciales en DatabaseConnection.java
-3. Verificar que base de datos `comparador` existe
+3. Verificar que base de datos `agrocomparador` existe
 4. Verificar que driver JDBC está en classpath
 
 ### Tabla vacía

@@ -67,7 +67,7 @@ if (!(Test-Path $BACKUP_DIR)) {
     New-Item -ItemType Directory -Path $BACKUP_DIR | Out-Null
 }
 
-Write-Host "Exportando BD 'comparador' desde localhost..." @info
+Write-Host "Exportando BD 'agrocomparador' desde localhost..." @info
 Write-Host "Debes ingresar la contrasena MySQL cuando se pida" @warn
 
 try {
@@ -76,7 +76,7 @@ try {
         --default-character-set=utf8mb4 `
         --single-transaction `
         --lock-tables=false `
-        comparador > $BACKUP_FILE 2>&1
+        agrocomparador > $BACKUP_FILE 2>&1
     
     if ($LASTEXITCODE -ne 0) {
         throw "Error en mysqldump"
@@ -164,7 +164,7 @@ try {
     Write-Host "ADVERTENCIA: Error en importacion remota" @warn
     Write-Host "Conectate manualmente a EC2 y ejecuta:" @info
     Write-Host "   ssh -i $PEM_FILE ${EC2_USER}@${EC2_IP}" -ForegroundColor Gray
-    Write-Host "   mysql -h localhost -u admin -p comparador REDIRECTION_OPERATOR /tmp/$BACKUP_NAME" -ForegroundColor Gray
+    Write-Host "   mysql -h localhost -u admin -p agrocomparador REDIRECTION_OPERATOR /tmp/$BACKUP_NAME" -ForegroundColor Gray
 }
 
 # Limpiar
@@ -190,7 +190,7 @@ Write-Host "    ssh -i PEMFILE ECUSER@ECIP" -ForegroundColor Gray
 Write-Host "    export DB_HOST=localhost" -ForegroundColor Gray
 Write-Host "    export DB_USER=admin" -ForegroundColor Gray
 Write-Host "    export DB_PASSWORD=tu_password" -ForegroundColor Gray
-Write-Host "    export DB_NAME=comparador" -ForegroundColor Gray
+Write-Host "    export DB_NAME=agrocomparador" -ForegroundColor Gray
 Write-Host ""
 Write-Host "3 - Ejecutar la aplicacion:" -ForegroundColor White
 Write-Host "    java -cp '.:mysql-connector-java-9.0.0.jar' agrocomparador" -ForegroundColor Gray

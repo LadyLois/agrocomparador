@@ -1,4 +1,4 @@
-# 📋 Estructura del Proyecto - Comparador de Precios Agrícolas
+# 📋 Estructura del Proyecto - agrocomparador de Precios Agrícolas
 
 ## 🎯 Objetivo
 Refactorizar una aplicación web Java en capas bien separadas siguiendo el patrón **MVC** (Model-View-Controller) de manera simple, sin frameworks complejos como Spring.
@@ -115,9 +115,9 @@ ORDER BY p.nombre, pr.precio
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
 │ 6. Base de Datos MySQL                                      │
-│    - comparador.precios                                     │
-│    - comparador.productos                                   │
-│    - comparador.fuentes                                     │
+│    - agrocomparador.precios                                     │
+│    - agrocomparador.productos                                   │
+│    - agrocomparador.fuentes                                     │
 │    - Retorna datos                                          │
 └──────────────────────┬──────────────────────────────────────┘
                        │
@@ -235,7 +235,7 @@ Accede a:
 
 ### Estructura esperada
 ```sql
-CREATE DATABASE comparador;
+CREATE DATABASE agrocomparador;
 
 CREATE TABLE productos (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -262,7 +262,7 @@ CREATE TABLE precios (
 ### Credenciales (hardcodeadas en DatabaseConnection.java)
 - **Host:** localhost
 - **Puerto:** 3306
-- **Base de datos:** comparador
+- **Base de datos:** agrocomparador
 - **Usuario:** admin
 - **Contraseña:** AgroComparador2026!
 

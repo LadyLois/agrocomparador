@@ -3,7 +3,7 @@ set -e
 
 BACKUP_FILE="/tmp/BACKUP_FILENAME_PLACEHOLDER"
 DB_USER="admin"
-DB_NAME="comparador"
+DB_NAME="agrocomparador"
 
 echo "Importando BD en EC2..."
 

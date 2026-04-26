@@ -152,7 +152,7 @@
 ```powershell
 # 1. Abre PowerShell
 # 2. Navega a tu proyecto
-cd c:\Java\agrocomparador
+cd c:\Java\agroagrocomparador
 
 # 3. Ejecuta el script rápido
 powershell -ExecutionPolicy Bypass -File MIGRACION_RAPIDA.ps1
@@ -181,7 +181,7 @@ ssh -i tu-key.pem ec2-user@tu-ec2-ip
 ## 📊 ESTRUCTURA DE ARCHIVOS CREADOS
 
 ```
-c:\Java\agrocomparador\
+c:\Java\agroagrocomparador\
 │
 ├── 📘 DOCUMENTACIÓN (Lee primero)
 │   ├── QUICK_START_MIGRACION.md           (⚡ 5 min)
@@ -200,7 +200,7 @@ c:\Java\agrocomparador\
 │   ├── INSTALAR_DEPENDENCIAS_EC2.sh       (🔧 Setup)
 │
 └── 📁 backups/                            (Tus backups aquí)
-    └── backup_comparador_TIMESTAMP.sql
+    └── backup_agrocomparador_TIMESTAMP.sql
 ```
 
 ---
@@ -211,7 +211,7 @@ c:\Java\agrocomparador\
 - [ ] MySQL instalado en EC2 (o corre INSTALAR_DEPENDENCIAS_EC2.sh)
 - [ ] Archivo .pem descargado y guardado
 - [ ] Tienes acceso SSH a EC2 (prueba: `ssh -i tu-key.pem ec2-user@tu-ec2-ip`)
-- [ ] BD local 'comparador' tiene datos
+- [ ] BD local 'agrocomparador' tiene datos
 - [ ] mysqldump y scp disponibles en tu PC (Windows 10+)
 - [ ] PowerShell 5.1+ o posterior
 
@@ -258,11 +258,11 @@ sudo yum install mysql -y
 Después de la migración:
 ```bash
 # Conectarse a BD remota funciona:
-mysql -h localhost -u admin -p comparador -e "SELECT COUNT(*) FROM productos;"
+mysql -h localhost -u admin -p agrocomparador -e "SELECT COUNT(*) FROM productos;"
 # ✓ Resultado: número de productos
 
 # Aplicación Java se conecta sin errores de BD
-java -cp ".:mysql-connector-java-9.0.0.jar" agrocomparador
+java -cp ".:mysql-connector-java-9.0.0.jar" agroagrocomparador
 # ✓ Conexión establecida correctamente
 ```
 
@@ -285,7 +285,7 @@ java -cp ".:mysql-connector-java-9.0.0.jar" agrocomparador
 ---
 
 **Creado:** Abril 2026
-**Para:** AgroComparador v1.0
+**Para:** Agroagrocomparador v1.0
 **Última revisión:** ${fecha}
 
 ¡Listo para empezar? 🚀 Elige tu método y comienza!

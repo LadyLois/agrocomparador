@@ -1,11 +1,11 @@
-# 🗄️ Configurar MySQL para AgroComparador
+# 🗄️ Configurar MySQL para Agroagrocomparador
 
 ## 1️⃣ Descargar Driver JDBC MySQL
 
 ### Opción A: Descargar manualmente
 1. Ve a: https://dev.mysql.com/downloads/connector/j/
 2. Descarga: `mysql-connector-java-*.jar` (última versión 5.x o 8.x)
-3. Guarda en: `c:\Java\agrocomparador\` (en la raíz del proyecto)
+3. Guarda en: `c:\Java\agroagrocomparador\` (en la raíz del proyecto)
 
 ### Opción B: Usando Maven (si tienes Maven instalado)
 Si tienes Maven, descarga automáticamente ejecutando en la carpeta del proyecto:
@@ -19,7 +19,7 @@ mvn dependency:copy-dependencies -DoutputDirectory=lib
 
 ### Prerequisitos
 - MySQL 5.7+ instalado y corriendo
-- Acceso a MySQL con usuario `root` y contraseña `AgroComparador2026!`
+- Acceso a MySQL con usuario `root` y contraseña `Agroagrocomparador2026!`
 
 ### Crear esquema
 1. Abre MySQL Workbench o CMD mysql
@@ -27,10 +27,10 @@ mvn dependency:copy-dependencies -DoutputDirectory=lib
 
 ```sql
 -- Crear base de datos
-CREATE DATABASE comparador;
+CREATE DATABASE agrocomparador;
 
 -- Usar la base de datos
-USE comparador;
+USE agrocomparador;
 
 -- Tabla de productos
 CREATE TABLE productos (
@@ -110,13 +110,13 @@ INSERT INTO precios (producto_id, fuente_id, precio) VALUES
 
 ```powershell
 # Opción 1: Si el driver está en la raíz del proyecto
-javac -cp "mysql-connector-java-*.jar" -d . agrocomparador.java agrocomparador/data/*.java agrocomparador/business/*.java agrocomparador/ui/*.java
+javac -cp "mysql-connector-java-*.jar" -d . agroagrocomparador.java agroagrocomparador/data/*.java agroagrocomparador/business/*.java agroagrocomparador/ui/*.java
 
 # Opción 2: Si descargaste driver específico (ejemplo: versión 8.0.33)
-javac -cp "mysql-connector-java-8.0.33.jar" -d . agrocomparador.java agrocomparador/data/*.java agrocomparador/business/*.java agrocomparador/ui/*.java
+javac -cp "mysql-connector-java-8.0.33.jar" -d . agroagrocomparador.java agroagrocomparador/data/*.java agroagrocomparador/business/*.java agroagrocomparador/ui/*.java
 
 # Opción 3: En subdirectorio (si creaste carpeta lib/)
-javac -cp "lib/*" -d . agrocomparador.java agrocomparador/data/*.java agrocomparador/business/*.java agrocomparador/ui/*.java
+javac -cp "lib/*" -d . agroagrocomparador.java agroagrocomparador/data/*.java agroagrocomparador/business/*.java agroagrocomparador/ui/*.java
 ```
 
 ---
@@ -125,19 +125,19 @@ javac -cp "lib/*" -d . agrocomparador.java agrocomparador/data/*.java agrocompar
 
 ### Opción 1: Usar puerto 80 (requiere admin)
 ```powershell
-java -cp ".;mysql-connector-java-*.jar" agrocomparador
+java -cp ".;mysql-connector-java-*.jar" agroagrocomparador
 ```
 
 ### Opción 2: Usar puerto 8080 (SIN permisos admin)
-Primero edita [WebServer.java](agrocomparador/ui/WebServer.java):
+Primero edita [WebServer.java](agroagrocomparador/ui/WebServer.java):
 - Línea 10: Cambia `private static final int PUERTO = 80;` 
 - A: `private static final int PUERTO = 8080;`
 
 Luego compila y ejecuta:
 ```powershell
-javac -cp "mysql-connector-java-*.jar" -d . agrocomparador.java agrocomparador/data/*.java agrocomparador/business/*.java agrocomparador/ui/*.java
+javac -cp "mysql-connector-java-*.jar" -d . agroagrocomparador.java agroagrocomparador/data/*.java agroagrocomparador/business/*.java agroagrocomparador/ui/*.java
 
-java -cp ".;mysql-connector-java-*.jar" agrocomparador
+java -cp ".;mysql-connector-java-*.jar" agroagrocomparador
 ```
 
 Abre: http://localhost:8080/
@@ -160,10 +160,10 @@ Deberías ver:
 
 ## 🔧 Cambiar Credenciales de Base de Datos
 
-Si usas **usuario/contraseña diferente**, edita [DatabaseConnection.java](agrocomparador/data/DatabaseConnection.java):
+Si usas **usuario/contraseña diferente**, edita [DatabaseConnection.java](agroagrocomparador/data/DatabaseConnection.java):
 
 ```java
-private static final String URL = "jdbc:mysql://localhost:3306/comparador";
+private static final String URL = "jdbc:mysql://localhost:3306/agrocomparador";
 private static final String USER = "tu_usuario";        // ← Cambia esto
 private static final String PASSWORD = "tu_contraseña"; // ← Y esto
 ```
@@ -190,10 +190,10 @@ Luego recompila.
 **Problema:** Usuario/contraseña incorrectos  
 **Solución:** 
 1. Verifica credenciales en MySQL
-2. Edita [DatabaseConnection.java](agrocomparador/data/DatabaseConnection.java) con credenciales correctas
+2. Edita [DatabaseConnection.java](agroagrocomparador/data/DatabaseConnection.java) con credenciales correctas
 3. Recompila
 
-### ❌ "Unknown database 'comparador'"
+### ❌ "Unknown database 'agrocomparador'"
 **Problema:** Base de datos no existe  
 **Solución:**
 1. Ejecuta el script SQL de creación (sección 2️⃣)
@@ -208,10 +208,10 @@ Luego recompila.
 ## 📁 Estructura de Archivos Esperada
 
 ```
-c:\Java\agrocomparador\
+c:\Java\agroagrocomparador\
 ├── mysql-connector-java-*.jar          ← Driver JDBC
-├── agrocomparador.java                 ← Punto de entrada
-├── agrocomparador/
+├── agroagrocomparador.java                 ← Punto de entrada
+├── agroagrocomparador/
 │   ├── data/
 │   │   ├── DatabaseConnection.java
 │   │   └── ProductoDAO.java
@@ -229,7 +229,7 @@ c:\Java\agrocomparador\
 
 - [ ] MySQL 5.7+ instalado y corriendo
 - [ ] Driver JDBC MySQL descargado en la carpeta del proyecto
-- [ ] Base de datos `comparador` creada
+- [ ] Base de datos `agrocomparador` creada
 - [ ] Tablas creadas (productos, fuentes, precios)
 - [ ] Datos de ejemplo insertados
 - [ ] Compilado con `-cp "mysql-connector-java-*.jar"`
@@ -242,6 +242,6 @@ c:\Java\agrocomparador\
 ## 🚀 Próximos Pasos
 
 1. **Importar más datos:** Modifica el script SQL
-2. **Agregar filtros:** Edita [ProductoService.java](agrocomparador/business/ProductoService.java)
-3. **Cambiar estilos:** Modifica [HTMLBuilder.java](agrocomparador/ui/HTMLBuilder.java)
+2. **Agregar filtros:** Edita [ProductoService.java](agroagrocomparador/business/ProductoService.java)
+3. **Cambiar estilos:** Modifica [HTMLBuilder.java](agroagrocomparador/ui/HTMLBuilder.java)
 4. **Deploy:** Usa Tomcat o cualquier servidor Java

@@ -114,13 +114,13 @@ Write-Host "1️⃣  Conecta a tu EC2 por SSH:" -ForegroundColor Cyan
 Write-Host "    ssh -i tu-key.pem ${EC2_USER}@${EC2_IP}" -ForegroundColor White
 Write-Host ""
 Write-Host "2️⃣  Dentro de EC2, importa la BD:" -ForegroundColor Cyan
-Write-Host "    mysql -h localhost -u admin -p comparador < /tmp/$BACKUP_BASENAME" -ForegroundColor White
+Write-Host "    mysql -h localhost -u admin -p agrocomparador < /tmp/$BACKUP_BASENAME" -ForegroundColor White
 Write-Host ""
 Write-Host "3️⃣  (Si es .gz, descomprime primero):" -ForegroundColor Cyan
 Write-Host "    gunzip /tmp/$BACKUP_BASENAME" -ForegroundColor White
 Write-Host ""
 Write-Host "4️⃣  Verifica los datos:" -ForegroundColor Cyan
-Write-Host "    mysql -h localhost -u admin -p comparador -e 'SELECT COUNT(*) FROM productos;'" -ForegroundColor White
+Write-Host "    mysql -h localhost -u admin -p agrocomparador -e 'SELECT COUNT(*) FROM productos;'" -ForegroundColor White
 Write-Host ""
 Write-Host "💡 Usa: .\3_IMPORTAR_EN_EC2.sh en EC2 para automatizar pasos 2-4" -ForegroundColor Yellow
 Write-Host ""

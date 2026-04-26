@@ -31,7 +31,7 @@ sudo apt-get install openjdk-11-jdk
 # En EC2, crear archivo /etc/environment u .bashrc
 export DB_HOST=agrocomparador-prod.xxxxx.us-east-1.rds.amazonaws.com
 export DB_PORT=3306
-export DB_NAME=comparador
+export DB_NAME=agrocomparador
 export DB_USER=admin
 export DB_PASSWORD=tu_contraseña_segura
 export PORT=8080
@@ -151,7 +151,7 @@ aws cloudwatch get-metric-statistics \
 ### Error: "Access denied for user 'admin'"
 - Verificar que DB_HOST, DB_USER, DB_PASSWORD son correctos
 - Verificar que RDS permite conexiones entrantes (Security Group)
-- Verificar que la base de datos "comparador" existe
+- Verificar que la base de datos "agrocomparador" existe
 
 ### Error: "Cannot find MySQL driver"
 - Asegurar que mysql-connector-java-9.0.0.jar está en el path

@@ -27,7 +27,7 @@ $env:DB_HOST = $Host
 $env:DB_USER = $User
 $env:DB_PASSWORD = $Password
 $env:DB_PORT = "3306"
-$env:DB_NAME = "comparador"
+$env:DB_NAME = "agrocomparador"
 $env:PORT = $Port
 
 Write-Host ""

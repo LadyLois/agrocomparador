@@ -126,7 +126,7 @@
 
 ## 🗄️ Base de Datos (Requisitos)
 
-- [x] Base de datos: comparador
+- [x] Base de datos: agrocomparador
 - [x] Tabla: productos
   - [x] Campos: id, nombre, variedad
 - [x] Tabla: fuentes

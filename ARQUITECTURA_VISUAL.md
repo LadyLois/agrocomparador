@@ -71,7 +71,7 @@
                 ┌──────────────────────┐
                 │  MYSQL DATABASE      │
                 ├──────────────────────┤
-                │ Database: comparador │
+                │ Database: agrocomparador │
                 │ • productos          │
                 │ • fuentes            │
                 │ • precios            │
