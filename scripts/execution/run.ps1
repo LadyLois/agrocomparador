@@ -14,17 +14,25 @@ Write-Host "🚀 AGROCOMPARADOR - Compilar y Ejecutar" -ForegroundColor $Green
 Write-Host "================================================" -ForegroundColor $Green
 Write-Host ""
 
-# Verificar si el driver está presente
+# Verificar si los JARs están presentes
 $JarFiles = Get-ChildItem -Filter "mysql-connector-java-*.jar" -ErrorAction SilentlyContinue
 if ($JarFiles.Count -eq 0) {
     Write-Host "❌ ERROR: No se encontró mysql-connector-java-*.jar" -ForegroundColor $Red
     Write-Host "   Por favor descarga el driver desde: https://dev.mysql.com/downloads/connector/j/" -ForegroundColor $Yellow
-    Write-Host "   Y guárdalo en: $(Get-Location)" -ForegroundColor $Yellow
+    exit 1
+}
+
+$JsoupFiles = Get-ChildItem -Filter "jsoup-*.jar" -ErrorAction SilentlyContinue
+if ($JsoupFiles.Count -eq 0) {
+    Write-Host "❌ ERROR: No se encontró jsoup-*.jar" -ForegroundColor $Red
+    Write-Host "   Por favor descarga jsoup desde: https://jsoup.org/download" -ForegroundColor $Yellow
     exit 1
 }
 
 $DriverJar = $JarFiles[0].Name
+$JsoupJar  = $JsoupFiles[0].Name
 Write-Host "✅ Driver encontrado: $DriverJar" -ForegroundColor $Green
+Write-Host "✅ Jsoup encontrado:  $JsoupJar"  -ForegroundColor $Green
 Write-Host ""
 
 # Obtener el puerto
@@ -55,11 +63,12 @@ Write-Host ""
 Write-Host "Compilando..." -ForegroundColor $Yellow
 
 # Compilar
-javac -cp "$DriverJar" -d . `
+javac -cp "$JsoupJar;$DriverJar" -d . `
     agrocomparador.java `
-    "agrocomparador/data/*" `
-    "agrocomparador/business/*" `
-    "agrocomparador/ui/*" `
+    "agrocomparador/data/*.java" `
+    "agrocomparador/business/*.java" `
+    "agrocomparador/ui/*.java" `
+    "agrocomparador/scraper/*.java" `
     2>&1
 
 if ($LASTEXITCODE -ne 0) {
