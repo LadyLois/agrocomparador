@@ -50,6 +50,7 @@ public class ProductoService {
             }
             
             producto.put("origen", p.getOrDefault("origen", "SCRAPER"));
+            producto.put("fecha_actualizacion", p.getOrDefault("fecha_actualizacion", ""));
             productos.add(producto);
         }
         

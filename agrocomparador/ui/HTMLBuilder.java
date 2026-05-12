@@ -124,14 +124,22 @@ public class HTMLBuilder {
             + "th { padding:12px 16px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:rgba(255,255,255,0.9); white-space:nowrap; }\n"
             + "td { padding:11px 16px; border-bottom:1px solid #F0F4F8; font-size:13px; }\n"
             + "tbody tr:last-child td { border-bottom:none; }\n"
-            + "tbody tr:hover { background:#F8FAFB; }\n"
-            + "tbody tr:nth-child(even) { background:#FAFBFC; } tbody tr:nth-child(even):hover { background:#F5F8FA; }\n"
+            + "tbody tr { background:white; }\n"
+            + "tbody tr:hover { background:#F0F4F8 !important; }\n"
+            + "tbody tr.row-bd           { background:#F1FBF2; } tbody tr.row-bd:hover           { background:#DCEEDE !important; }\n"
+            + "tbody tr.row-agroprecios  { background:#EEF5FF; } tbody tr.row-agroprecios:hover  { background:#D8E8FF !important; }\n"
+            + "tbody tr.row-agropizarra  { background:#FFF3EE; } tbody tr.row-agropizarra:hover  { background:#FFE0CC !important; }\n"
             + ".precio { font-weight:700; color:#1B5E20; font-size:14px; }\n"
             + ".orn { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }\n"
-            + ".orn-bd          { background:#E8F5E9; color:#1B5E20; }\n"
-            + ".orn-agroprecios { background:#E3F2FD; color:#1565C0; }\n"
-            + ".orn-agropizarra { background:#FBE9E7; color:#E64A19; }\n"
+            + ".orn-bd          { background:#C8E6C9; color:#1B5E20; }\n"
+            + ".orn-agroprecios { background:#BBDEFB; color:#1565C0; }\n"
+            + ".orn-agropizarra { background:#FFCCBC; color:#BF360C; }\n"
             + ".var-empty { color:#C5CDD8; font-style:italic; }\n"
+            + ".prod-icon { font-size:15px; vertical-align:middle; margin-right:4px; }\n"
+            + ".period-btns { display:flex; gap:6px; padding:8px 20px 12px; flex-wrap:wrap; border-bottom:1px solid #EEF2F7; }\n"
+            + ".period-btn { padding:4px 14px; border:1.5px solid #D0D8E4; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; background:white; color:#5A6779; transition:all 0.15s; }\n"
+            + ".period-btn:hover { border-color:#2E7D32; color:#2E7D32; }\n"
+            + ".period-btn.active { background:#2E7D32; border-color:#2E7D32; color:white; }\n"
 
             // Empty state
             + ".empty-state { text-align:center; padding:60px 20px; color:#78909C; background:white; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }\n"
@@ -229,9 +237,11 @@ public class HTMLBuilder {
     // ─── Gráfica Chart.js ─────────────────────────────────────────────────────
 
     private static String construirGrafica(List<Map<String, Object>> productos) {
-        // Agrupar por (nombre + variedad), calcular precio medio y origen dominante
-        Map<String, List<Double>> preciosMap   = new LinkedHashMap<>();
-        Map<String, Map<String, Integer>> origenMap = new LinkedHashMap<>();
+        // Construir array JS con todos los datos en bruto para filtrado en cliente
+        StringBuilder rawDataJs = new StringBuilder("[");
+        boolean firstItem = true;
+        int numGrupos = 0;
+        Set<String> clavesVistas = new java.util.HashSet<>();
 
         for (Map<String, Object> p : productos) {
             String nombre   = p.getOrDefault("nombre", "").toString().trim();
@@ -240,52 +250,36 @@ public class HTMLBuilder {
                               ? varObj.toString().trim() : "";
             String clave    = variedad.isEmpty() ? nombre : nombre + " · " + variedad;
             String origen   = p.getOrDefault("origen", "BD").toString().toUpperCase();
+            String fecha    = p.getOrDefault("fecha_actualizacion", "").toString();
             double precio;
             try { precio = ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); }
             catch (Exception e) { precio = 0; }
             if (precio <= 0 || clave.isEmpty()) continue;
 
-            preciosMap.computeIfAbsent(clave, k -> new ArrayList<>()).add(precio);
-            origenMap.computeIfAbsent(clave, k -> new HashMap<>()).merge(origen, 1, Integer::sum);
+            clavesVistas.add(clave);
+            if (!firstItem) rawDataJs.append(",");
+            firstItem = false;
+            rawDataJs.append("{k:'").append(escapeJS(clave))
+                     .append("',v:").append(String.format(Locale.US, "%.2f", precio))
+                     .append(",o:'").append(escapeJS(origen))
+                     .append("',d:'").append(escapeJS(fecha))
+                     .append("'}");
         }
+        rawDataJs.append("]");
+        numGrupos = clavesVistas.size();
 
-        // Ordenar por número de registros desc, limitar a 25
-        List<String> claves = new ArrayList<>(preciosMap.keySet());
-        claves.sort((a, b) -> preciosMap.get(b).size() - preciosMap.get(a).size());
-        if (claves.size() > 25) claves = claves.subList(0, 25);
-        // Reordenar alfabéticamente para la visualización
-        Collections.sort(claves);
+        if (numGrupos == 0) return "";
 
-        if (claves.isEmpty()) return "";
-
-        StringBuilder labels  = new StringBuilder("[");
-        StringBuilder precios = new StringBuilder("[");
-        StringBuilder bgs     = new StringBuilder("[");
-        StringBuilder borders = new StringBuilder("[");
-
-        for (int i = 0; i < claves.size(); i++) {
-            String clave = claves.get(i);
-            double avg = preciosMap.get(clave).stream()
-                                   .mapToDouble(Double::doubleValue).average().orElse(0);
-            String dominante = origenMap.get(clave).entrySet().stream()
-                    .max(Map.Entry.comparingByValue())
-                    .map(Map.Entry::getKey).orElse("BD");
-            String[] c = coloresPorOrigen(dominante);
-
-            if (i > 0) { labels.append(","); precios.append(","); bgs.append(","); borders.append(","); }
-            labels.append("'").append(escapeJS(clave)).append("'");
-            precios.append(String.format(Locale.US, "%.2f", avg));
-            bgs.append("'").append(c[0]).append("'");
-            borders.append("'").append(c[1]).append("'");
-        }
-        labels.append("]"); precios.append("]"); bgs.append("]"); borders.append("]");
-
-        String nota = claves.size() == preciosMap.size()
-            ? claves.size() + " grupos · precio promedio"
-            : claves.size() + " de " + preciosMap.size() + " grupos · precio promedio";
+        String nota = numGrupos + " grupos · precio medio";
 
         return "<div class='card'>\n"
-            + "  <div class='card-head'><h2>📊 Precios por Producto</h2><span class='card-note'>" + nota + "</span></div>\n"
+            + "  <div class='card-head'><h2>📊 Precio Medio por Producto</h2><span class='card-note'>" + nota + "</span></div>\n"
+            + "  <div class='period-btns'>\n"
+            + "    <button class='period-btn active' data-period='todo'>Todo</button>\n"
+            + "    <button class='period-btn' data-period='hoy'>Hoy</button>\n"
+            + "    <button class='period-btn' data-period='7d'>7 días</button>\n"
+            + "    <button class='period-btn' data-period='30d'>30 días</button>\n"
+            + "  </div>\n"
             + "  <div class='chart-wrap'><canvas id='gchart'></canvas></div>\n"
             + "  <div class='chart-legend'>\n"
             + "    <span class='legend-item'><span class='legend-dot' style='background:#2E7D32'></span>Base de Datos</span>\n"
@@ -294,33 +288,55 @@ public class HTMLBuilder {
             + "  </div>\n"
             + "  <script>\n"
             + "  (function(){\n"
-            + "    const labels  = " + labels  + ";\n"
-            + "    const precios = " + precios + ";\n"
-            + "    const bgs     = " + bgs     + ";\n"
-            + "    const borders = " + borders + ";\n"
-            + "    new Chart(document.getElementById('gchart'), {\n"
-            + "      type: 'bar',\n"
-            + "      data: { labels, datasets: [{ label:'Precio (€)', data:precios, backgroundColor:bgs, borderColor:borders, borderWidth:1.5, borderRadius:5, borderSkipped:false }] },\n"
-            + "      options: {\n"
-            + "        responsive:true, maintainAspectRatio:false,\n"
-            + "        plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: c => ' €'+parseFloat(c.raw).toFixed(2)+'/kg' }}},\n"
-            + "        scales: {\n"
-            + "          y: { beginAtZero:true, grid:{ color:'#EEF2F7' }, ticks:{ callback: v => '€'+v.toFixed(2) }},\n"
-            + "          x: { grid:{ display:false }, ticks:{ maxRotation:40, minRotation:20, font:{ size:11 }}}\n"
+            + "    var rawData=" + rawDataJs + ";\n"
+            + "    function clr(o,a){if(o==='AGROPRECIOS')return 'rgba(21,101,192,'+a+')';if(o==='AGROPIZARRA')return 'rgba(230,74,25,'+a+')';return 'rgba(46,125,50,'+a+')';}\n"
+            + "    function computeData(items){\n"
+            + "      var g={};\n"
+            + "      items.forEach(function(d){if(!d.v||d.v<=0||!d.k)return;if(!g[d.k])g[d.k]={s:0,n:0,oc:{}};g[d.k].s+=d.v;g[d.k].n++;g[d.k].oc[d.o]=(g[d.k].oc[d.o]||0)+1;});\n"
+            + "      var ks=Object.keys(g).sort(function(a,b){return g[b].n-g[a].n;});\n"
+            + "      if(ks.length>25)ks=ks.slice(0,25);\n"
+            + "      ks.sort();\n"
+            + "      var labels=ks;\n"
+            + "      var data=ks.map(function(k){return parseFloat((g[k].s/g[k].n).toFixed(2));});\n"
+            + "      var bgs=ks.map(function(k){var mo=Object.keys(g[k].oc).reduce(function(a,b){return g[k].oc[a]>=g[k].oc[b]?a:b;});return clr(mo,'0.75');});\n"
+            + "      var bds=ks.map(function(k){var mo=Object.keys(g[k].oc).reduce(function(a,b){return g[k].oc[a]>=g[k].oc[b]?a:b;});return clr(mo,'1');});\n"
+            + "      return {labels:labels,data:data,bgs:bgs,bds:bds};\n"
+            + "    }\n"
+            + "    function filterPeriod(p){\n"
+            + "      if(p==='todo')return rawData;\n"
+            + "      var ms=p==='hoy'?86400000:p==='7d'?604800000:2592000000;\n"
+            + "      var now=Date.now();\n"
+            + "      return rawData.filter(function(d){if(!d.d)return true;var t=new Date(d.d.replace(' ','T')).getTime();return isNaN(t)||(now-t)<=ms;});\n"
+            + "    }\n"
+            + "    var cd=computeData(rawData);\n"
+            + "    var chart=new Chart(document.getElementById('gchart'),{\n"
+            + "      type:'bar',\n"
+            + "      data:{labels:cd.labels,datasets:[{label:'Precio medio (€/kg)',data:cd.data,backgroundColor:cd.bgs,borderColor:cd.bds,borderWidth:1.5,borderRadius:5,borderSkipped:false}]},\n"
+            + "      options:{\n"
+            + "        responsive:true,maintainAspectRatio:false,\n"
+            + "        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' €'+parseFloat(c.raw).toFixed(2)+'/kg (media)';}}}},\n"
+            + "        scales:{\n"
+            + "          y:{beginAtZero:true,grid:{color:'#EEF2F7'},ticks:{callback:function(v){return '€'+v.toFixed(2);}}},\n"
+            + "          x:{grid:{display:false},ticks:{maxRotation:40,minRotation:20,font:{size:11}}}\n"
             + "        }\n"
             + "      }\n"
+            + "    });\n"
+            + "    document.querySelectorAll('.period-btn').forEach(function(btn){\n"
+            + "      btn.addEventListener('click',function(){\n"
+            + "        document.querySelectorAll('.period-btn').forEach(function(b){b.classList.remove('active');});\n"
+            + "        this.classList.add('active');\n"
+            + "        var filtered=filterPeriod(this.dataset.period);\n"
+            + "        var cd=computeData(filtered);\n"
+            + "        chart.data.labels=cd.labels;\n"
+            + "        chart.data.datasets[0].data=cd.data;\n"
+            + "        chart.data.datasets[0].backgroundColor=cd.bgs;\n"
+            + "        chart.data.datasets[0].borderColor=cd.bds;\n"
+            + "        chart.update();\n"
+            + "      });\n"
             + "    });\n"
             + "  })();\n"
             + "  </script>\n"
             + "</div>\n";
-    }
-
-    private static String[] coloresPorOrigen(String origen) {
-        switch (origen) {
-            case "AGROPRECIOS": return new String[]{"rgba(21,101,192,0.75)", "rgba(21,101,192,1)"};
-            case "AGROPIZARRA": return new String[]{"rgba(230,74,25,0.75)",  "rgba(230,74,25,1)"};
-            default:            return new String[]{"rgba(46,125,50,0.75)",  "rgba(46,125,50,1)"};
-        }
     }
 
     // ─── Tabla ────────────────────────────────────────────────────────────────
@@ -341,27 +357,78 @@ public class HTMLBuilder {
                               ? varObj.toString().trim() : null;
 
             String origen = p.getOrDefault("origen", "BD").toString().toUpperCase();
-            String ornCls, ornLabel;
+            String ornCls, ornLabel, rowCls;
             switch (origen) {
-                case "AGROPRECIOS": ornCls = "orn-agroprecios"; ornLabel = "🌐 AgroPrecios"; break;
-                case "AGROPIZARRA": ornCls = "orn-agropizarra"; ornLabel = "📊 AgroPizarra"; break;
-                default:            ornCls = "orn-bd";          ornLabel = "🗄️ BD";
+                case "AGROPRECIOS": ornCls = "orn-agroprecios"; ornLabel = "🌐 AgroPrecios"; rowCls = "row-agroprecios"; break;
+                case "AGROPIZARRA": ornCls = "orn-agropizarra"; ornLabel = "📊 AgroPizarra"; rowCls = "row-agropizarra"; break;
+                default:            ornCls = "orn-bd";          ornLabel = "🗄️ BD";          rowCls = "row-bd";
             }
 
-            t.append("      <tr>\n");
-            t.append("        <td>").append(escapeHTML(p.getOrDefault("nombre", "").toString())).append("</td>\n");
+            String nombre = p.getOrDefault("nombre", "").toString();
+            String icono  = iconoProducto(nombre);
+            double precio;
+            try { precio = ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); }
+            catch (Exception e) { precio = 0.0; }
+
+            t.append("      <tr class='").append(rowCls).append("'>\n");
+            t.append("        <td><span class='prod-icon'>").append(icono).append("</span>").append(escapeHTML(nombre)).append("</td>\n");
             if (variedad != null)
                 t.append("        <td>").append(escapeHTML(variedad)).append("</td>\n");
             else
                 t.append("        <td><span class='var-empty'>—</span></td>\n");
             t.append("        <td>").append(escapeHTML(p.getOrDefault("fuente", "").toString())).append("</td>\n");
-            t.append("        <td class='precio'>€").append(String.format("%.2f", p.getOrDefault("precio", 0.0))).append("</td>\n");
+            t.append("        <td class='precio'>€").append(String.format(Locale.US, "%.2f", precio)).append("</td>\n");
             t.append("        <td><span class='orn ").append(ornCls).append("'>").append(ornLabel).append("</span></td>\n");
             t.append("      </tr>\n");
         }
 
         t.append("    </tbody>\n  </table>\n</div>\n");
         return t.toString();
+    }
+
+    private static String iconoProducto(String nombre) {
+        if (nombre == null) return "🌿";
+        String n = nombre.toLowerCase()
+            .replace("á","a").replace("é","e").replace("í","i")
+            .replace("ó","o").replace("ú","u").replace("ü","u").replace("ñ","n");
+        if (n.contains("tomate"))                                                   return "🍅";
+        if (n.contains("naranja"))                                                  return "🍊";
+        if (n.contains("limon"))                                                    return "🍋";
+        if (n.contains("manzana"))                                                  return "🍎";
+        if (n.contains("pera") && !n.contains("peral"))                            return "🍐";
+        if (n.contains("uva") || n.contains("vid"))                                return "🍇";
+        if (n.contains("fresa") || n.contains("freson"))                           return "🍓";
+        if (n.contains("melocoton") || n.contains("nectarina"))                    return "🍑";
+        if (n.contains("sandia"))                                                   return "🍉";
+        if (n.contains("melon") && !n.contains("melocoton"))                       return "🍈";
+        if (n.contains("cereza"))                                                   return "🍒";
+        if (n.contains("kiwi"))                                                     return "🥝";
+        if (n.contains("platano") || n.contains("banana"))                         return "🍌";
+        if (n.contains("mango"))                                                    return "🥭";
+        if (n.contains("pina") || n.contains("ananas"))                            return "🍍";
+        if (n.contains("pimiento") || n.contains("guindilla"))                     return "🌶️";
+        if (n.contains("zanahoria"))                                                return "🥕";
+        if (n.contains("lechuga") || n.contains("escarola")
+            || n.contains("espinaca") || n.contains("acelga"))                     return "🥬";
+        if (n.contains("cebolla"))                                                  return "🧅";
+        if (n.contains("ajo"))                                                      return "🧄";
+        if (n.contains("patata") || n.contains("papa"))                            return "🥔";
+        if (n.contains("calabacin") || n.contains("pepino"))                       return "🥒";
+        if (n.contains("brocoli") || n.contains("coliflor") || n.contains("col")) return "🥦";
+        if (n.contains("maiz"))                                                     return "🌽";
+        if (n.contains("berenjena"))                                                return "🍆";
+        if (n.contains("aguacate") || n.contains("palta"))                         return "🥑";
+        if (n.contains("garbanzo") || n.contains("alubia") || n.contains("judia")
+            || n.contains("lenteja") || n.contains("haba") || n.contains("guisante")) return "🫘";
+        if (n.contains("trigo") || n.contains("cebada") || n.contains("avena")
+            || n.contains("centeno"))                                               return "🌾";
+        if (n.contains("arroz"))                                                    return "🍚";
+        if (n.contains("aceituna") || n.contains("oliva"))                         return "🫒";
+        if (n.contains("champinon") || n.contains("seta"))                         return "🍄";
+        if (n.contains("almendra") || n.contains("nuez")
+            || n.contains("avellana") || n.contains("pistach"))                    return "🥜";
+        if (n.contains("apio") || n.contains("perejil") || n.contains("cilantro")) return "🌿";
+        return "🌿";
     }
 
     // ─── Utilidades ──────────────────────────────────────────────────────────
