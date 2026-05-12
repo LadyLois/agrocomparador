@@ -140,6 +140,15 @@ public class HTMLBuilder {
             + ".period-btn { padding:4px 14px; border:1.5px solid #D0D8E4; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; background:white; color:#5A6779; transition:all 0.15s; }\n"
             + ".period-btn:hover { border-color:#2E7D32; color:#2E7D32; }\n"
             + ".period-btn.active { background:#2E7D32; border-color:#2E7D32; color:white; }\n"
+            + ".group-header { cursor:pointer; }\n"
+            + ".group-header td { background:#EEF2F7 !important; font-weight:700; font-size:13px; border-top:2px solid #D0D8E4; }\n"
+            + ".group-header:hover td { background:#E2E8F2 !important; }\n"
+            + ".toggle-icon { display:inline-block; transition:transform 0.2s; margin-right:6px; color:#78909C; font-style:normal; }\n"
+            + ".group-header.open .toggle-icon { transform:rotate(90deg); }\n"
+            + ".group-child { display:none; }\n"
+            + ".group-count { color:#78909C; font-size:12px; font-weight:400; }\n"
+            + ".child-indent { color:#C5CDD8; font-size:14px; padding-left:24px !important; }\n"
+            + ".fecha-cell { font-size:11px; color:#78909C; white-space:nowrap; }\n"
 
             // Empty state
             + ".empty-state { text-align:center; padding:60px 20px; color:#78909C; background:white; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }\n"
@@ -342,48 +351,108 @@ public class HTMLBuilder {
     // ─── Tabla ────────────────────────────────────────────────────────────────
 
     private static String construirTabla(List<Map<String, Object>> productos) {
+        // Agrupar por nombre de producto manteniendo el orden de aparición
+        Map<String, List<Map<String, Object>>> grupos = new LinkedHashMap<>();
+        for (Map<String, Object> p : productos) {
+            String nombre = p.getOrDefault("nombre", "").toString().trim();
+            grupos.computeIfAbsent(nombre, k -> new ArrayList<>()).add(p);
+        }
+
         StringBuilder t = new StringBuilder();
         t.append("<div class='card'>\n");
-        t.append("  <div class='card-head'><h2>📋 Listado de Precios</h2><span class='card-note'>").append(productos.size()).append(" registros</span></div>\n");
+        t.append("  <div class='card-head'><h2>📋 Listado de Precios</h2>");
+        t.append("<span class='card-note'>").append(grupos.size()).append(" productos · ").append(productos.size()).append(" registros · clic para expandir</span></div>\n");
         t.append("  <table>\n");
         t.append("    <thead><tr>");
-        t.append("<th>Producto</th><th>Variedad</th><th>Fuente</th><th>Precio/kg</th><th>Origen</th>");
+        t.append("<th>Producto</th><th>Variedad</th><th>Fuente</th><th>Precio/kg</th><th>Origen</th><th>Fecha</th>");
         t.append("</tr></thead>\n");
         t.append("    <tbody>\n");
 
-        for (Map<String, Object> p : productos) {
-            Object varObj = p.get("variedad");
-            String variedad = (varObj != null && !varObj.toString().trim().isEmpty())
-                              ? varObj.toString().trim() : null;
+        int gi = 0;
+        for (Map.Entry<String, List<Map<String, Object>>> entry : grupos.entrySet()) {
+            String nombre = entry.getKey();
+            List<Map<String, Object>> grupo = entry.getValue();
+            String gid = "g" + gi++;
+            String icono = iconoProducto(nombre);
 
-            String origen = p.getOrDefault("origen", "BD").toString().toUpperCase();
-            String ornCls, ornLabel, rowCls;
-            switch (origen) {
-                case "AGROPRECIOS": ornCls = "orn-agroprecios"; ornLabel = "🌐 AgroPrecios"; rowCls = "row-agroprecios"; break;
-                case "AGROPIZARRA": ornCls = "orn-agropizarra"; ornLabel = "📊 AgroPizarra"; rowCls = "row-agropizarra"; break;
-                default:            ornCls = "orn-bd";          ornLabel = "🗄️ BD";          rowCls = "row-bd";
-            }
+            double minP = grupo.stream().mapToDouble(p -> {
+                try { return ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); } catch (Exception e) { return 0; }
+            }).filter(v -> v > 0).min().orElse(0);
+            double maxP = grupo.stream().mapToDouble(p -> {
+                try { return ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); } catch (Exception e) { return 0; }
+            }).filter(v -> v > 0).max().orElse(0);
 
-            String nombre = p.getOrDefault("nombre", "").toString();
-            String icono  = iconoProducto(nombre);
-            double precio;
-            try { precio = ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); }
-            catch (Exception e) { precio = 0.0; }
-
-            t.append("      <tr class='").append(rowCls).append("'>\n");
-            t.append("        <td><span class='prod-icon'>").append(icono).append("</span>").append(escapeHTML(nombre)).append("</td>\n");
-            if (variedad != null)
-                t.append("        <td>").append(escapeHTML(variedad)).append("</td>\n");
-            else
-                t.append("        <td><span class='var-empty'>—</span></td>\n");
-            t.append("        <td>").append(escapeHTML(p.getOrDefault("fuente", "").toString())).append("</td>\n");
-            t.append("        <td class='precio'>€").append(String.format(Locale.US, "%.2f", precio)).append("</td>\n");
-            t.append("        <td><span class='orn ").append(ornCls).append("'>").append(ornLabel).append("</span></td>\n");
+            // Fila cabecera del grupo
+            t.append("      <tr class='group-header' data-group='").append(gid).append("'>\n");
+            t.append("        <td colspan='2'><span class='toggle-icon'>▶</span><span class='prod-icon'>").append(icono).append("</span>").append(escapeHTML(nombre)).append("</td>\n");
+            t.append("        <td class='group-count'>").append(grupo.size()).append(" registros</td>\n");
+            t.append("        <td class='precio'>€").append(String.format(Locale.US, "%.2f", minP));
+            if (maxP > minP) t.append(" – €").append(String.format(Locale.US, "%.2f", maxP));
+            t.append("</td>\n");
+            t.append("        <td></td><td></td>\n");
             t.append("      </tr>\n");
+
+            // Filas hijo
+            for (Map<String, Object> p : grupo) {
+                Object varObj = p.get("variedad");
+                String variedad = (varObj != null && !varObj.toString().trim().isEmpty()) ? varObj.toString().trim() : null;
+                String origen = p.getOrDefault("origen", "BD").toString().toUpperCase();
+                String ornCls, ornLabel, rowCls;
+                switch (origen) {
+                    case "AGROPRECIOS": ornCls = "orn-agroprecios"; ornLabel = "🌐 AgroPrecios"; rowCls = "row-agroprecios"; break;
+                    case "AGROPIZARRA": ornCls = "orn-agropizarra"; ornLabel = "📊 AgroPizarra"; rowCls = "row-agropizarra"; break;
+                    default:            ornCls = "orn-bd";          ornLabel = "🗄️ BD";          rowCls = "row-bd";
+                }
+                double precio;
+                try { precio = ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); } catch (Exception e) { precio = 0.0; }
+                String fecha = p.getOrDefault("fecha_actualizacion", "").toString();
+
+                t.append("      <tr class='group-child ").append(rowCls).append("' data-group='").append(gid).append("'>\n");
+                t.append("        <td class='child-indent'>└</td>\n");
+                if (variedad != null)
+                    t.append("        <td>").append(escapeHTML(variedad)).append("</td>\n");
+                else
+                    t.append("        <td><span class='var-empty'>—</span></td>\n");
+                t.append("        <td>").append(escapeHTML(p.getOrDefault("fuente", "").toString())).append("</td>\n");
+                t.append("        <td class='precio'>€").append(String.format(Locale.US, "%.2f", precio)).append("</td>\n");
+                t.append("        <td><span class='orn ").append(ornCls).append("'>").append(ornLabel).append("</span></td>\n");
+                t.append("        <td class='fecha-cell'>").append(escapeHTML(formatearFecha(fecha))).append("</td>\n");
+                t.append("      </tr>\n");
+            }
         }
 
-        t.append("    </tbody>\n  </table>\n</div>\n");
+        t.append("    </tbody>\n  </table>\n");
+        t.append("  <script>\n");
+        t.append("  (function(){\n");
+        t.append("    document.querySelectorAll('.group-header').forEach(function(h){\n");
+        t.append("      h.addEventListener('click',function(){\n");
+        t.append("        var g=this.dataset.group,open=this.classList.contains('open');\n");
+        t.append("        this.classList.toggle('open');\n");
+        t.append("        document.querySelectorAll('.group-child[data-group=\"'+g+'\"]').forEach(function(r){\n");
+        t.append("          r.style.display=open?'none':'table-row';\n");
+        t.append("        });\n");
+        t.append("      });\n");
+        t.append("    });\n");
+        t.append("  })();\n");
+        t.append("  </script>\n");
+        t.append("</div>\n");
         return t.toString();
+    }
+
+    private static String formatearFecha(String fecha) {
+        if (fecha == null || fecha.trim().isEmpty()) return "—";
+        try {
+            String f = fecha.trim();
+            if (f.length() >= 10) {
+                String[] d = f.substring(0, 10).split("-");
+                if (d.length == 3) {
+                    String resultado = d[2] + "/" + d[1] + "/" + d[0];
+                    if (f.length() >= 16) resultado += " " + f.substring(11, 16);
+                    return resultado;
+                }
+            }
+        } catch (Exception e) {}
+        return fecha.substring(0, Math.min(16, fecha.length()));
     }
 
     private static String iconoProducto(String nombre) {

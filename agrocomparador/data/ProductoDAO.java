@@ -20,7 +20,7 @@ public class ProductoDAO {
         try {
             conn = DatabaseConnection.getConnection();
             
-            String sql = "SELECT p.nombre, p.variedad, f.nombre AS fuente, pr.precio " +
+            String sql = "SELECT p.nombre, p.variedad, f.nombre AS fuente, pr.precio, pr.fecha " +
                         "FROM precios pr " +
                         "JOIN productos p ON pr.producto_id = p.id " +
                         "JOIN fuentes f ON pr.fuente_id = f.id " +
@@ -35,6 +35,8 @@ public class ProductoDAO {
                 producto.put("variedad", rs.getString("variedad"));
                 producto.put("fuente", rs.getString("fuente"));
                 producto.put("precio", rs.getDouble("precio"));
+                java.sql.Timestamp ts = rs.getTimestamp("fecha");
+                producto.put("fecha_actualizacion", ts != null ? ts.toString().substring(0, Math.min(19, ts.toString().length())) : "");
                 productos.add(producto);
             }
             
