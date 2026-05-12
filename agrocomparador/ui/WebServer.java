@@ -5,98 +5,102 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-/**
- * Servidor Web HTTP que maneja solicitudes
- * Coordina entre la capa visual y la capa de lógica/datos
- * 
- * Soporta:
- * - GET / : Muestra todos los productos
- * - GET /?producto=Tomate : Muestra productos filtrados por nombre
- */
 public class WebServer {
-    // Puerto configurable desde variable de entorno (por defecto 8080)
     private static final int PUERTO = Integer.parseInt(
         System.getenv().getOrDefault("PORT", "8080")
     );
-    
-    /**
-     * Inicia el servidor web
-     * @throws Exception si hay error al iniciar
-     */
+
     public static void iniciar() throws Exception {
         ServerSocket server = new ServerSocket(PUERTO);
         System.out.println("🚀 Servidor iniciado en puerto " + PUERTO);
         System.out.println("📍 Accede a: http://localhost:" + PUERTO + "/");
-        
+
         while (true) {
             Socket cliente = server.accept();
-            // Ejecutar en hilo separado para no bloquear
             new Thread(() -> manejarSolicitud(cliente)).start();
         }
     }
-    
-    /**
-     * Maneja una solicitud HTTP individual
-     * @param cliente Socket del cliente
-     */
+
     private static void manejarSolicitud(Socket cliente) {
         try {
-            // Leer la solicitud HTTP
             BufferedReader entrada = new BufferedReader(new InputStreamReader(cliente.getInputStream(), "UTF-8"));
             String primeraLinea = entrada.readLine();
-            
-            if (primeraLinea == null) {
+
+            if (primeraLinea == null) { cliente.close(); return; }
+
+            String[] partes = primeraLinea.split(" ");
+            String ruta = partes.length > 1 ? partes[1] : "/";
+            String rutaBase = ruta.contains("?") ? ruta.split("\\?")[0] : ruta;
+            Map<String, String> params = parsearQueryString(ruta.contains("?") ? ruta.split("\\?", 2)[1] : "");
+
+            OutputStream salida = cliente.getOutputStream();
+
+            if (rutaBase.equals("/vaciar")) {
+                ProductoService.vaciarDatosScraper();
+                enviarRedireccion(salida, "/?accion=vaciado");
                 cliente.close();
                 return;
             }
-            
-            // Parsear la solicitud (ej: "GET /?producto=Tomate HTTP/1.1")
-            String[] partes = primeraLinea.split(" ");
-            String ruta = partes.length > 1 ? partes[1] : "/";
-            
-            // Extraer parámetro de búsqueda
-            String filtroProducto = null;
-            if (ruta.contains("?")) {
-                String[] rutaParts = ruta.split("\\?");
-                String queryString = rutaParts[1];
-                
-                if (queryString.startsWith("producto=")) {
-                    filtroProducto = queryString.substring("producto=".length());
-                    // Decodificar URL
-                    filtroProducto = URLDecoder.decode(filtroProducto, "UTF-8");
-                }
+
+            if (rutaBase.equals("/cargar")) {
+                ProductoService.forzarCargaDatos();
+                enviarRedireccion(salida, "/?accion=cargando");
+                cliente.close();
+                return;
             }
-            
-            // Obtener datos
+
+            String filtroProducto = params.get("producto");
+            if (filtroProducto != null) filtroProducto = URLDecoder.decode(filtroProducto, "UTF-8");
+            String accion = params.get("accion");
+
             List<Map<String, Object>> productos = null;
             String error = null;
-            
+
             try {
                 if (filtroProducto != null && !filtroProducto.trim().isEmpty()) {
-                    productos = ProductoService.obtenerProductosPorNombre(filtroProducto);
+                    productos = ProductoService.obtenerProductosPorNombreCombinados(filtroProducto);
                 } else {
-                    productos = ProductoService.obtenerTodosLosProductos();
+                    productos = ProductoService.obtenerTodosLosProductosCombinados();
                 }
             } catch (Exception e) {
-                error = e.getMessage();
-                System.err.println("❌ Error: " + error);
-                e.printStackTrace();
+                error = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                System.err.println("❌ Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
-            
-            // Construir respuesta HTML
-            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto);
+
+            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto, accion);
             String respuestaHTTP = HTMLBuilder.construirRespuestaHTTP(htmlContent);
-            
-            // Enviar respuesta
-            OutputStream salida = cliente.getOutputStream();
+
             salida.write(respuestaHTTP.getBytes("UTF-8"));
             salida.flush();
             salida.close();
             cliente.close();
-            
+
         } catch (Exception e) {
             System.err.println("❌ Error al manejar solicitud: " + e.getMessage());
-            e.printStackTrace();
         }
     }
+
+    private static Map<String, String> parsearQueryString(String query) {
+        Map<String, String> params = new HashMap<>();
+        if (query == null || query.isEmpty()) return params;
+        for (String par : query.split("&")) {
+            String[] kv = par.split("=", 2);
+            if (kv.length == 2) params.put(kv[0], kv[1]);
+            else if (kv.length == 1) params.put(kv[0], "");
+        }
+        return params;
+    }
+
+    private static void enviarRedireccion(OutputStream salida, String url) throws IOException {
+        String respuesta = "HTTP/1.1 302 Found\r\nLocation: " + url + "\r\nConnection: close\r\n\r\n";
+        salida.write(respuesta.getBytes("UTF-8"));
+        salida.flush();
+    }
 }
+
+
+
+
+
+
+

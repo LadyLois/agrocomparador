@@ -4,12 +4,10 @@ import agrocomparador.data.DatabaseConnection;
 import java.sql.*;
 import java.util.*;
 
-// Fix #10: eliminado import muerto de ProductoDAO
 public class ScraperScheduler implements Runnable {
 
     private static ScraperScheduler instancia;
     private static final int INTERVALO_MINUTOS = 60;
-    // Fix #8: volatile garantiza visibilidad del flag entre threads
     private volatile boolean activo = true;
     private Thread thread;
 
@@ -24,7 +22,6 @@ public class ScraperScheduler implements Runnable {
 
     public void iniciar() {
         if (thread == null || !thread.isAlive()) {
-            // Fix #9: crear tabla una sola vez al arrancar, no en cada ciclo
             inicializarTabla();
             thread = new Thread(this, "ScraperScheduler");
             thread.setDaemon(true);
@@ -36,9 +33,22 @@ public class ScraperScheduler implements Runnable {
     public void detener() {
         activo = false;
         if (thread != null) {
-            thread.interrupt(); // despierta el sleep para que pare inmediatamente
+            thread.interrupt();
         }
         System.out.println("🛑 Deteniendo scheduler de scraper...");
+    }
+
+    public void forzarActualizacionAsincrona() {
+        Thread t = new Thread(() -> {
+            try {
+                actualizarDatos();
+            } catch (Exception e) {
+                System.err.println("❌ Error en carga forzada: " + e.getMessage());
+            }
+        }, "ScraperForzado");
+        t.setDaemon(true);
+        t.start();
+        System.out.println("🚀 Carga de datos iniciada en segundo plano");
     }
 
     @Override
@@ -67,26 +77,21 @@ public class ScraperScheduler implements Runnable {
     }
 
     private void actualizarDatos() {
-        System.out.println("\n📥 Iniciando actualización de datos desde AgroPrecios.com...");
+        System.out.println("\n📥 Iniciando actualización de datos desde las fuentes...");
 
-        try {
-            List<Map<String, String>> productos = AgrePreciosScraperDAO.obtenerProductosDesdeScraper();
-
-            if (productos.isEmpty()) {
-                System.out.println("⚠️ No hay datos para actualizar");
-                return;
-            }
-
-            guardarEnBaseDatos(productos);
-            System.out.println("✓ Actualización completada: " + productos.size() + " registros guardados");
-
-        } catch (Exception e) {
-            System.err.println("❌ Error actualizando datos: " + e.getMessage());
-            e.printStackTrace();
-        }
+        actualizarFuente("AgroPrecios.com", AgrePreciosScraperDAO.obtenerProductosDesdeScraper());
+        actualizarFuente("AgroPizarra.com", AgroPizarraScraperDAO.obtenerProductosDesdeScraper());
     }
 
-    // Fix #9: llamado una sola vez desde iniciar(), separado de guardarEnBaseDatos()
+    private void actualizarFuente(String nombre, List<Map<String, String>> productos) {
+        if (productos.isEmpty()) {
+            System.out.println("⚠️ No hay datos de " + nombre);
+            return;
+        }
+        guardarEnBaseDatos(productos);
+        System.out.println("✓ " + nombre + ": " + productos.size() + " registros guardados");
+    }
+
     private void inicializarTabla() {
         Connection conn = null;
         try {
@@ -100,14 +105,19 @@ public class ScraperScheduler implements Runnable {
     }
 
     private void guardarEnBaseDatos(List<Map<String, String>> productos) {
+        if (productos.isEmpty()) return;
+
+        // Derivar el origen de los datos a partir del primer elemento
+        String origen = productos.get(0).getOrDefault("origen", "SCRAPER");
+
         Connection conn = null;
         try {
             conn = DatabaseConnection.getConnection();
-            // Fix #2: transacción para garantizar atomicidad de borrado + inserción
             conn.setAutoCommit(false);
 
             try {
-                limpiarDatosAntiguos(conn);
+                // Reemplazar datos anteriores de este mismo origen en lugar de acumularlos
+                limpiarDatosPorOrigen(conn, origen);
 
                 String sql = "INSERT INTO precios_scraper " +
                             "(nombre, variedad, fuente, precio, origen, fecha_actualizacion) " +
@@ -118,8 +128,7 @@ public class ScraperScheduler implements Runnable {
                     for (Map<String, String> p : productos) {
                         stmt.setString(1, p.getOrDefault("nombre", ""));
                         stmt.setString(2, p.getOrDefault("variedad", ""));
-                        stmt.setString(3, p.getOrDefault("fuente", "AgroPrecios"));
-                        // Fix #11: setDouble en lugar de setString para columna DECIMAL
+                        stmt.setString(3, p.getOrDefault("fuente", origen));
                         double precio;
                         try {
                             precio = Double.parseDouble(p.getOrDefault("precio", "0"));
@@ -127,7 +136,7 @@ public class ScraperScheduler implements Runnable {
                             precio = 0.0;
                         }
                         stmt.setDouble(4, precio);
-                        stmt.setString(5, "SCRAPER");
+                        stmt.setString(5, origen);
 
                         stmt.addBatch();
 
@@ -136,14 +145,13 @@ public class ScraperScheduler implements Runnable {
                             System.out.println("   → Insertados " + insertados + " registros...");
                         }
                     }
-                    stmt.executeBatch(); // flush del lote final
+                    stmt.executeBatch();
                 }
 
                 conn.commit();
-                System.out.println("   ✓ " + productos.size() + " registros guardados en BD");
+                System.out.println("   ✓ " + productos.size() + " registros de " + origen + " guardados en BD");
 
             } catch (SQLException e) {
-                // Fix #2: rollback si falla el insert, los datos antiguos no se pierden
                 conn.rollback();
                 throw e;
             }
@@ -168,7 +176,8 @@ public class ScraperScheduler implements Runnable {
                     "origen VARCHAR(50), " +
                     "fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                     "INDEX idx_nombre (nombre), " +
-                    "INDEX idx_fecha (fecha_actualizacion)" +
+                    "INDEX idx_fecha (fecha_actualizacion), " +
+                    "INDEX idx_origen (origen)" +
                     ")";
 
         try (Statement stmt = conn.createStatement()) {
@@ -177,13 +186,15 @@ public class ScraperScheduler implements Runnable {
         }
     }
 
-    private void limpiarDatosAntiguos(Connection conn) throws SQLException {
-        String sql = "DELETE FROM precios_scraper WHERE fecha_actualizacion < DATE_SUB(NOW(), INTERVAL 7 DAY)";
-
-        try (Statement stmt = conn.createStatement()) {
-            int eliminados = stmt.executeUpdate(sql);
+    // Elimina todos los registros de un origen antes de insertar los nuevos,
+    // evitando acumulación de datos duplicados por ejecución
+    private void limpiarDatosPorOrigen(Connection conn, String origen) throws SQLException {
+        String sql = "DELETE FROM precios_scraper WHERE origen = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, origen);
+            int eliminados = stmt.executeUpdate();
             if (eliminados > 0) {
-                System.out.println("   🧹 Eliminados " + eliminados + " registros antiguos");
+                System.out.println("   🧹 Eliminados " + eliminados + " registros anteriores de " + origen);
             }
         }
     }

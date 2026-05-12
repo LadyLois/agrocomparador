@@ -4,6 +4,10 @@
 # Uso: En PowerShell, ejecuta: .\run.ps1
 # ========================================
 
+# Cambiar al directorio raíz del proyecto (dos niveles arriba del script)
+$ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..")
+Set-Location $ProjectRoot
+
 # Colores para el output
 $Green = [System.ConsoleColor]::Green
 $Red = [System.ConsoleColor]::Red
@@ -60,6 +64,51 @@ if ($Puerto -eq "1") {
 }
 
 Write-Host ""
+
+# ── Variables de entorno de base de datos ──────────────────────────────────────
+$EnvFile = ".env"
+if (Test-Path $EnvFile) {
+    Write-Host "📄 Cargando variables desde $EnvFile..." -ForegroundColor $Yellow
+    Get-Content $EnvFile | Where-Object { $_ -match "^\s*[^#]" -and $_ -match "=" } | ForEach-Object {
+        $parts = $_ -split "=", 2
+        $key   = $parts[0].Trim()
+        $value = $parts[1].Trim()
+        [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
+    }
+    Write-Host "✅ Variables cargadas desde .env" -ForegroundColor $Green
+} else {
+    Write-Host "⚙️  Configuración de base de datos (pulsa Enter para usar el valor por defecto):" -ForegroundColor $Yellow
+    $dbHost = Read-Host "DB_HOST [localhost]"
+    if ([string]::IsNullOrWhiteSpace($dbHost)) { $dbHost = "localhost" }
+
+    $dbUser = Read-Host "DB_USER [root]"
+    if ([string]::IsNullOrWhiteSpace($dbUser)) { $dbUser = "root" }
+
+    $dbPass = Read-Host "DB_PASSWORD"
+
+    $dbName = Read-Host "DB_NAME [agrocomparador]"
+    if ([string]::IsNullOrWhiteSpace($dbName)) { $dbName = "agrocomparador" }
+
+    $env:DB_HOST     = $dbHost
+    $env:DB_USER     = $dbUser
+    $env:DB_PASSWORD = $dbPass
+    $env:DB_NAME     = $dbName
+
+    $guardar = Read-Host "¿Guardar en .env para próximas ejecuciones? (s/N)"
+    if ($guardar -eq "s" -or $guardar -eq "S") {
+        @"
+DB_HOST=$dbHost
+DB_USER=$dbUser
+DB_PASSWORD=$dbPass
+DB_NAME=$dbName
+DB_PORT=3306
+PORT=$PUERTO
+"@ | Set-Content $EnvFile -Encoding utf8
+        Write-Host "✅ Variables guardadas en .env" -ForegroundColor $Green
+    }
+}
+Write-Host ""
+
 Write-Host "Compilando..." -ForegroundColor $Yellow
 
 # Compilar
@@ -84,4 +133,4 @@ Write-Host "================================================" -ForegroundColor $
 Write-Host ""
 
 # Ejecutar
-java -cp ".;$DriverJar" agrocomparador
+java -cp ".;$JsoupJar;$DriverJar" agrocomparador

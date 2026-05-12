@@ -3,6 +3,8 @@ package agrocomparador.business;
 import agrocomparador.data.ProductoDAO;
 import agrocomparador.data.ProductoDAOScraper;
 import agrocomparador.scraper.AgrePreciosScraperDAO;
+import agrocomparador.scraper.ScraperScheduler;
+import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,40 +56,31 @@ public class ProductoService {
         return productos;
     }
     
-    /**
-     * Obtiene productos filtrados por nombre (solo de BD)
-     * @param nombreProducto Nombre del producto a buscar
-     * @return Lista de productos que coinciden con el filtro
-     */
-    public static List<Map<String, Object>> obtenerProductosPorNombre(String nombreProducto) {
+    public static List<Map<String, Object>> obtenerProductosPorNombre(String filtro) {
         List<Map<String, Object>> todos = ProductoDAO.obtenerProductos();
-        
-        if (nombreProducto == null || nombreProducto.trim().isEmpty()) {
-            return todos;
-        }
-        
-        return todos.stream()
-            .filter(p -> p.get("nombre").toString().toLowerCase()
-                    .contains(nombreProducto.toLowerCase()))
-            .collect(Collectors.toList());
+        if (filtro == null || filtro.trim().isEmpty()) return todos;
+        return todos.stream().filter(p -> coincide(p, filtro)).collect(Collectors.toList());
     }
-    
-    /**
-     * Obtiene productos filtrados por nombre (BD + Scraper)
-     * @param nombreProducto Nombre del producto a buscar
-     * @return Lista de productos que coinciden
-     */
-    public static List<Map<String, Object>> obtenerProductosPorNombreCombinados(String nombreProducto) {
+
+    public static List<Map<String, Object>> obtenerProductosPorNombreCombinados(String filtro) {
         List<Map<String, Object>> todos = obtenerTodosLosProductosCombinados();
-        
-        if (nombreProducto == null || nombreProducto.trim().isEmpty()) {
-            return todos;
-        }
-        
-        return todos.stream()
-            .filter(p -> p.get("nombre").toString().toLowerCase()
-                    .contains(nombreProducto.toLowerCase()))
-            .collect(Collectors.toList());
+        if (filtro == null || filtro.trim().isEmpty()) return todos;
+        return todos.stream().filter(p -> coincide(p, filtro)).collect(Collectors.toList());
+    }
+
+    private static boolean coincide(Map<String, Object> producto, String filtro) {
+        String f = normalizar(filtro);
+        return normalizar(producto.getOrDefault("nombre",   "").toString()).contains(f)
+            || normalizar(producto.getOrDefault("variedad", "").toString()).contains(f)
+            || normalizar(producto.getOrDefault("fuente",   "").toString()).contains(f)
+            || normalizar(producto.getOrDefault("origen",   "").toString()).contains(f);
+    }
+
+    private static String normalizar(String texto) {
+        if (texto == null || texto.isEmpty()) return "";
+        String sin_tildes = Normalizer.normalize(texto, Normalizer.Form.NFD)
+                                      .replaceAll("\\p{InCombiningDiacriticalMarks}", "");
+        return sin_tildes.toLowerCase();
     }
     
     /**
@@ -129,6 +122,14 @@ public class ProductoService {
             .count();
     }
     
+    public static void vaciarDatosScraper() {
+        ProductoDAOScraper.vaciarDatos();
+    }
+
+    public static void forzarCargaDatos() {
+        ScraperScheduler.getInstance().forzarActualizacionAsincrona();
+    }
+
     /**
      * Obtiene estadísticas del scraper
      * @return Mapa con estadísticas

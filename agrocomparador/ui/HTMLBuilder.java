@@ -2,197 +2,393 @@ package agrocomparador.ui;
 
 import agrocomparador.business.ProductoService;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class HTMLBuilder {
 
-    public static String construirRespuestaHTML(List<Map<String, Object>> productos, String error, String filtroAplicado) {
-        StringBuilder html = new StringBuilder();
+    // ─── Punto de entrada principal ──────────────────────────────────────────
 
-        html.append("<!DOCTYPE html>\n");
-        html.append("<html>\n<head>\n");
+    public static String construirRespuestaHTML(List<Map<String, Object>> productos,
+            String error, String filtroAplicado, String accion) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html>\n<html lang='es'>\n<head>\n");
         html.append("<meta charset='UTF-8'>\n");
         html.append("<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n");
-        html.append("<title>Comparador de Precios Agrícolas</title>\n");
+        html.append("<title>AgroComparador — Precios Agrícolas</title>\n");
+        html.append("<script src='https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js'></script>\n");
         html.append(construirCSS());
         html.append("</head>\n<body>\n");
 
+        html.append(construirHeader());
+
         html.append("<div class='container'>\n");
-        html.append("<h1>🌾 Comparador de Precios Agrícolas</h1>\n");
 
-        html.append(construirInfoScraper());
-        html.append(construirFormularioBusqueda(filtroAplicado));
+        if (accion != null && !accion.isEmpty())
+            html.append(construirBanner(accion));
 
-        if (error != null && !error.isEmpty()) {
-            html.append("<div class='error'>\n");
-            html.append("<p><strong>Error:</strong> ").append(error).append("</p>\n");
+        html.append(construirStatsGrid());
+        html.append(construirToolbar(filtroAplicado));
+
+        if (error != null && !error.isEmpty())
+            html.append("<div class='alert alert-error'><span>⚠️</span> ").append(escapeHTML(error)).append("</div>\n");
+
+        if (productos != null && !productos.isEmpty()) {
+            html.append("<p class='results-info'>").append(productos.size()).append(" registros encontrados</p>\n");
+            html.append(construirGrafica(productos));
+            html.append(construirTabla(productos));
+        } else {
+            html.append("<div class='empty-state'>");
+            html.append("<div class='empty-icon'>📭</div>");
+            html.append("<p>No hay datos disponibles</p>");
+            html.append("<small>Usa el botón <strong>Cargar datos</strong> para iniciar la descarga</small>");
             html.append("</div>\n");
         }
 
-        if (productos != null && !productos.isEmpty()) {
-            html.append("<p class='info'>Se encontraron ").append(productos.size()).append(" registros</p>\n");
-            html.append(construirTablaProductos(productos));
-        } else {
-            html.append("<p class='no-data'>No hay productos disponibles.</p>\n");
-        }
-
-        html.append("</div>\n");
-        html.append("</body>\n</html>");
-
+        html.append("</div>\n</body>\n</html>");
         return html.toString();
     }
 
+    public static String construirRespuestaHTML(List<Map<String, Object>> productos,
+            String error, String filtroAplicado) {
+        return construirRespuestaHTML(productos, error, filtroAplicado, null);
+    }
+
+    // ─── CSS ─────────────────────────────────────────────────────────────────
+
     private static String construirCSS() {
-        return "<style>\n" +
-               "  * { margin: 0; padding: 0; box-sizing: border-box; }\n" +
-               "  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; }\n" +
-               "  .container { max-width: 1000px; margin: 0 auto; padding: 20px; }\n" +
-               "  h1 { color: #1a5f2d; margin-bottom: 20px; text-align: center; }\n" +
-               "  .form-busqueda { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n" +
-               "  .form-busqueda form { display: flex; gap: 10px; }\n" +
-               "  .form-busqueda input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }\n" +
-               "  .form-busqueda button { padding: 10px 20px; background-color: #1a5f2d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }\n" +
-               "  .form-busqueda button:hover { background-color: #0d3d1f; }\n" +
-               "  .form-busqueda .limpiar { background-color: #999; }\n" +
-               "  .form-busqueda .limpiar:hover { background-color: #666; }\n" +
-               "  table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }\n" +
-               "  thead { background-color: #1a5f2d; color: white; }\n" +
-               "  th { padding: 15px; text-align: left; font-weight: bold; }\n" +
-               "  td { padding: 12px 15px; border-bottom: 1px solid #eee; }\n" +
-               "  tbody tr:hover { background-color: #f5f5f5; }\n" +
-               "  tbody tr:nth-child(even) { background-color: #fafafa; }\n" +
-               "  .precio { color: #d32f2f; font-weight: bold; font-size: 16px; }\n" +
-               "  .error { background-color: #ffebee; border-left: 4px solid #d32f2f; padding: 15px; border-radius: 4px; margin-bottom: 20px; color: #b71c1c; }\n" +
-               "  .info { background-color: #e8f5e9; border-left: 4px solid #1a5f2d; padding: 10px; border-radius: 4px; margin-bottom: 20px; color: #1a5f2d; }\n" +
-               "  .info-scraper { background-color: #e3f2fd; border-left: 4px solid #1976d2; padding: 15px; border-radius: 4px; margin-bottom: 20px; color: #0d47a1; font-size: 14px; }\n" +
-               "  .scraper-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }\n" +
-               "  .stat-box { background: white; padding: 10px; border-radius: 4px; text-align: center; border-top: 3px solid #1976d2; }\n" +
-               "  .stat-value { font-size: 18px; font-weight: bold; color: #1976d2; }\n" +
-               "  .stat-label { font-size: 12px; color: #666; margin-top: 5px; }\n" +
-               "  .origen { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 12px; font-weight: bold; }\n" +
-               "  .origen-bd { background-color: #c8e6c9; color: #1a5f2d; }\n" +
-               "  .origen-scraper { background-color: #bbdefb; color: #0d47a1; }\n" +
-               "  .no-data { background-color: #f5f5f5; padding: 20px; text-align: center; border-radius: 4px; color: #999; }\n" +
-               "</style>\n";
+        return "<style>\n"
+            + "*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }\n"
+            + "body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:#F0F4F8; color:#1A2332; font-size:14px; line-height:1.5; }\n"
+
+            // Header
+            + ".site-header { background:linear-gradient(135deg,#1B5E20 0%,#2E7D32 60%,#43A047 100%); color:white; padding:20px 0; box-shadow:0 4px 16px rgba(0,0,0,0.18); }\n"
+            + ".header-inner { max-width:1100px; margin:0 auto; padding:0 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }\n"
+            + ".header-brand { display:flex; align-items:center; gap:14px; }\n"
+            + ".header-icon { font-size:38px; }\n"
+            + ".header-brand h1 { font-size:22px; font-weight:700; letter-spacing:-0.3px; }\n"
+            + ".header-brand p { font-size:12px; opacity:0.82; margin-top:2px; }\n"
+            + ".header-sources { display:flex; gap:8px; flex-wrap:wrap; }\n"
+            + ".src-badge { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; background:rgba(255,255,255,0.15); backdrop-filter:blur(4px); }\n"
+
+            // Container
+            + ".container { max-width:1100px; margin:0 auto; padding:24px; }\n"
+
+            // Stats grid
+            + ".stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }\n"
+            + ".stat-card { background:white; border-radius:12px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04); border-top:3px solid; }\n"
+            + ".stat-card.c-green { border-top-color:#2E7D32; }\n"
+            + ".stat-card.c-blue  { border-top-color:#1565C0; }\n"
+            + ".stat-card.c-orange{ border-top-color:#E64A19; }\n"
+            + ".stat-card.c-gray  { border-top-color:#78909C; }\n"
+            + ".stat-val  { font-size:22px; font-weight:700; color:#1A2332; }\n"
+            + ".stat-lbl  { font-size:11px; color:#78909C; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }\n"
+
+            // Toolbar (search + buttons)
+            + ".toolbar { background:white; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04); padding:14px 18px; margin-bottom:18px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }\n"
+            + ".search-wrap { flex:1; min-width:200px; position:relative; }\n"
+            + ".search-wrap::before { content:'🔍'; position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; pointer-events:none; }\n"
+            + ".search-wrap input { width:100%; padding:9px 14px 9px 38px; border:1.5px solid #E0E7EF; border-radius:8px; font-size:14px; color:#1A2332; outline:none; transition:border-color 0.2s; background:#FAFBFC; }\n"
+            + ".search-wrap input:focus { border-color:#2E7D32; background:white; }\n"
+            + ".sep { width:1px; height:30px; background:#E0E7EF; margin:0 4px; flex-shrink:0; }\n"
+            + ".btn { padding:9px 16px; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; text-decoration:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }\n"
+            + ".btn-primary { background:#2E7D32; color:white; } .btn-primary:hover { background:#1B5E20; }\n"
+            + ".btn-ghost   { background:#EEF2F7; color:#5A6779; } .btn-ghost:hover   { background:#DDE4EE; color:#1A2332; }\n"
+            + ".btn-blue    { background:#1565C0; color:white; } .btn-blue:hover    { background:#0D47A1; }\n"
+            + ".btn-danger  { background:#C62828; color:white; } .btn-danger:hover  { background:#B71C1C; }\n"
+
+            // Banners
+            + ".banner { display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:10px; margin-bottom:16px; font-weight:500; font-size:14px; border:1px solid; }\n"
+            + ".banner-success { background:#E8F5E9; border-color:#A5D6A7; color:#1B5E20; }\n"
+            + ".banner-info    { background:#E3F2FD; border-color:#90CAF9; color:#0D47A1; }\n"
+
+            // Alert
+            + ".alert { display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:10px; margin-bottom:16px; font-size:14px; border:1px solid; }\n"
+            + ".alert-error { background:#FFEBEE; border-color:#FFCDD2; color:#B71C1C; }\n"
+
+            // Results info
+            + ".results-info { font-size:13px; color:#78909C; margin-bottom:12px; padding:0 2px; }\n"
+
+            // Chart card
+            + ".card { background:white; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04); margin-bottom:18px; overflow:hidden; }\n"
+            + ".card-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #EEF2F7; }\n"
+            + ".card-head h2 { font-size:14px; font-weight:600; color:#1A2332; }\n"
+            + ".card-note { font-size:12px; color:#78909C; }\n"
+            + ".chart-wrap { padding:16px 20px 20px; height:300px; }\n"
+            + ".chart-legend { display:flex; gap:16px; padding:0 20px 14px; flex-wrap:wrap; }\n"
+            + ".legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:#5A6779; }\n"
+            + ".legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }\n"
+
+            // Table
+            + "table { width:100%; border-collapse:collapse; }\n"
+            + "thead { background:linear-gradient(135deg,#1B5E20,#2E7D32); }\n"
+            + "th { padding:12px 16px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:rgba(255,255,255,0.9); white-space:nowrap; }\n"
+            + "td { padding:11px 16px; border-bottom:1px solid #F0F4F8; font-size:13px; }\n"
+            + "tbody tr:last-child td { border-bottom:none; }\n"
+            + "tbody tr:hover { background:#F8FAFB; }\n"
+            + "tbody tr:nth-child(even) { background:#FAFBFC; } tbody tr:nth-child(even):hover { background:#F5F8FA; }\n"
+            + ".precio { font-weight:700; color:#1B5E20; font-size:14px; }\n"
+            + ".orn { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }\n"
+            + ".orn-bd          { background:#E8F5E9; color:#1B5E20; }\n"
+            + ".orn-agroprecios { background:#E3F2FD; color:#1565C0; }\n"
+            + ".orn-agropizarra { background:#FBE9E7; color:#E64A19; }\n"
+            + ".var-empty { color:#C5CDD8; font-style:italic; }\n"
+
+            // Empty state
+            + ".empty-state { text-align:center; padding:60px 20px; color:#78909C; background:white; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }\n"
+            + ".empty-icon { font-size:52px; margin-bottom:14px; }\n"
+            + ".empty-state p { font-size:16px; font-weight:600; color:#1A2332; margin-bottom:8px; }\n"
+            + ".empty-state small { font-size:13px; }\n"
+
+            // Responsive
+            + "@media(max-width:720px) { .stats-grid { grid-template-columns:repeat(2,1fr); } .header-sources { display:none; } .sep { display:none; } }\n"
+            + "@media(max-width:500px) { .stats-grid { grid-template-columns:1fr 1fr; } }\n"
+            + "</style>\n";
     }
 
-    private static String construirInfoScraper() {
-        StringBuilder info = new StringBuilder();
-        info.append("<div class='info-scraper'>");
-        info.append("<strong>📥 Datos en Vivo:</strong> Los precios incluyen información en tiempo real de agroprecios.com\n");
+    // ─── Header ───────────────────────────────────────────────────────────────
 
+    private static String construirHeader() {
+        return "<header class='site-header'>\n"
+            + "  <div class='header-inner'>\n"
+            + "    <div class='header-brand'>\n"
+            + "      <span class='header-icon'>🌾</span>\n"
+            + "      <div>\n"
+            + "        <h1>AgroComparador</h1>\n"
+            + "        <p>Comparador de precios agrícolas en tiempo real</p>\n"
+            + "      </div>\n"
+            + "    </div>\n"
+            + "    <div class='header-sources'>\n"
+            + "      <span class='src-badge'>🌐 AgroPrecios.com</span>\n"
+            + "      <span class='src-badge'>📊 AgroPizarra.com</span>\n"
+            + "    </div>\n"
+            + "  </div>\n"
+            + "</header>\n";
+    }
+
+    // ─── Banner de acción ─────────────────────────────────────────────────────
+
+    private static String construirBanner(String accion) {
+        if ("vaciado".equals(accion))
+            return "<div class='banner banner-success'>✅ Datos vaciados correctamente.</div>\n";
+        if ("cargando".equals(accion))
+            return "<div class='banner banner-info'>⏳ Carga iniciada en segundo plano — los resultados aparecerán en unos minutos.</div>\n";
+        return "";
+    }
+
+    // ─── Stats grid ──────────────────────────────────────────────────────────
+
+    private static String construirStatsGrid() {
+        String total = "—", unicos = "—", promedio = "—", fecha = "—";
         try {
-            Map<String, String> stats = ProductoService.obtenerEstadisticasScraper();
-
-            if (stats != null && !stats.isEmpty()) {
-                info.append("<div class='scraper-stats'>");
-
-                info.append("<div class='stat-box'>");
-                info.append("<div class='stat-value'>").append(stats.getOrDefault("total_registros", "0")).append("</div>");
-                info.append("<div class='stat-label'>Registros Totales</div>");
-                info.append("</div>");
-
-                info.append("<div class='stat-box'>");
-                info.append("<div class='stat-value'>").append(stats.getOrDefault("productos_unicos", "0")).append("</div>");
-                info.append("<div class='stat-label'>Productos Únicos</div>");
-                info.append("</div>");
-
-                info.append("<div class='stat-box'>");
-                info.append("<div class='stat-value'>€").append(stats.getOrDefault("precio_promedio", "0")).append("</div>");
-                info.append("<div class='stat-label'>Precio Promedio</div>");
-                info.append("</div>");
-
-                String ultima = stats.getOrDefault("ultima_actualizacion", "No disponible");
-                info.append("<div class='stat-box'>");
-                info.append("<div class='stat-label' style='font-size: 11px;'>Última Actualización</div>");
-                info.append("<div style='font-size: 10px; color: #0d47a1; margin-top: 5px;'>").append(ultima.substring(0, Math.min(10, ultima.length()))).append("</div>");
-                info.append("</div>");
-
-                info.append("</div>");
+            Map<String, String> s = ProductoService.obtenerEstadisticasScraper();
+            if (s != null && !s.isEmpty()) {
+                total    = s.getOrDefault("total_registros",   "0");
+                unicos   = s.getOrDefault("productos_unicos",  "0");
+                promedio = "€" + s.getOrDefault("precio_promedio", "0");
+                String u = s.getOrDefault("ultima_actualizacion", "");
+                fecha    = u.isEmpty() ? "—" : u.substring(0, Math.min(16, u.length()));
             }
-        } catch (Exception e) {
-            info.append("⚠️ No hay datos de scraper disponibles aún.");
-        }
+        } catch (Exception ignored) {}
 
-        info.append("</div>\n");
-        return info.toString();
+        return "<div class='stats-grid'>\n"
+            + statCard("c-green",  total,    "Registros totales")
+            + statCard("c-blue",   unicos,   "Productos únicos")
+            + statCard("c-orange", promedio, "Precio promedio")
+            + statCard("c-gray",   fecha,    "Última actualización")
+            + "</div>\n";
     }
 
-    private static String construirFormularioBusqueda(String filtroAplicado) {
-        StringBuilder form = new StringBuilder();
-        form.append("<div class='form-busqueda'>\n");
-        form.append("  <form method='GET' action='/'>\n");
-        form.append("    <input type='text' name='producto' placeholder='Buscar producto...' ");
-        if (filtroAplicado != null && !filtroAplicado.isEmpty()) {
-            form.append("value='").append(filtroAplicado).append("'");
-        }
-        form.append(" />\n");
-        form.append("    <button type='submit'>🔍 Buscar</button>\n");
-        if (filtroAplicado != null && !filtroAplicado.isEmpty()) {
-            form.append("    <a href='/'><button type='button' class='limpiar'>Limpiar</button></a>\n");
-        }
-        form.append("  </form>\n");
-        form.append("</div>\n");
-        return form.toString();
+    private static String statCard(String cls, String val, String lbl) {
+        return "  <div class='stat-card " + cls + "'>"
+            + "<div class='stat-val'>" + escapeHTML(val) + "</div>"
+            + "<div class='stat-lbl'>" + lbl + "</div></div>\n";
     }
 
-    private static String construirTablaProductos(List<Map<String, Object>> productos) {
-        StringBuilder tabla = new StringBuilder();
-        tabla.append("<table>\n");
-        tabla.append("  <thead>\n");
-        tabla.append("    <tr>\n");
-        tabla.append("      <th>Producto</th>\n");
-        tabla.append("      <th>Variedad</th>\n");
-        tabla.append("      <th>Fuente</th>\n");
-        tabla.append("      <th>Precio</th>\n");
-        tabla.append("      <th>Origen</th>\n");
-        tabla.append("    </tr>\n");
-        tabla.append("  </thead>\n");
-        tabla.append("  <tbody>\n");
+    // ─── Toolbar (búsqueda + acciones) ────────────────────────────────────────
 
-        for (Map<String, Object> producto : productos) {
-            tabla.append("    <tr>\n");
-            tabla.append("      <td>").append(escapeHTML(producto.get("nombre").toString())).append("</td>\n");
-            tabla.append("      <td>").append(escapeHTML(producto.get("variedad").toString())).append("</td>\n");
-            tabla.append("      <td>").append(escapeHTML(producto.get("fuente").toString())).append("</td>\n");
-            tabla.append("      <td class='precio'>€").append(String.format("%.2f", producto.get("precio"))).append("</td>\n");
+    private static String construirToolbar(String filtro) {
+        StringBuilder tb = new StringBuilder();
+        tb.append("<div class='toolbar'>\n");
+        tb.append("  <form method='GET' action='/' style='display:flex;gap:8px;flex:1;min-width:0;align-items:center;flex-wrap:wrap;'>\n");
+        tb.append("    <div class='search-wrap'>");
+        tb.append("<input type='text' name='producto' placeholder='Buscar por producto, variedad, fuente u origen...' ");
+        if (filtro != null && !filtro.isEmpty())
+            tb.append("value='").append(escapeHTML(filtro)).append("'");
+        tb.append("/></div>\n");
+        tb.append("    <button type='submit' class='btn btn-primary'>Buscar</button>\n");
+        if (filtro != null && !filtro.isEmpty())
+            tb.append("    <a href='/' class='btn btn-ghost'>✕ Limpiar</a>\n");
+        tb.append("  </form>\n");
+        tb.append("  <div class='sep'></div>\n");
+        tb.append("  <a href='/cargar' class='btn btn-blue'>⬇️ Cargar datos</a>\n");
+        tb.append("  <a href='/vaciar' class='btn btn-danger' onclick=\"return confirm('¿Vaciar todos los datos del scraper?')\">🗑️ Vaciar</a>\n");
+        tb.append("</div>\n");
+        return tb.toString();
+    }
 
-            String origen = producto.getOrDefault("origen", "BD").toString();
-            String claseOrigen = origen.equals("SCRAPER") ? "origen-scraper" : "origen-bd";
-            String labelOrigen = origen.equals("SCRAPER") ? "🌐 Scraper" : "🗄️ BD";
-            tabla.append("      <td><span class='origen ").append(claseOrigen).append("'>").append(labelOrigen).append("</span></td>\n");
+    // ─── Gráfica Chart.js ─────────────────────────────────────────────────────
 
-            tabla.append("    </tr>\n");
+    private static String construirGrafica(List<Map<String, Object>> productos) {
+        // Agrupar por (nombre + variedad), calcular precio medio y origen dominante
+        Map<String, List<Double>> preciosMap   = new LinkedHashMap<>();
+        Map<String, Map<String, Integer>> origenMap = new LinkedHashMap<>();
+
+        for (Map<String, Object> p : productos) {
+            String nombre   = p.getOrDefault("nombre", "").toString().trim();
+            Object varObj   = p.get("variedad");
+            String variedad = (varObj != null && !varObj.toString().trim().isEmpty())
+                              ? varObj.toString().trim() : "";
+            String clave    = variedad.isEmpty() ? nombre : nombre + " · " + variedad;
+            String origen   = p.getOrDefault("origen", "BD").toString().toUpperCase();
+            double precio;
+            try { precio = ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); }
+            catch (Exception e) { precio = 0; }
+            if (precio <= 0 || clave.isEmpty()) continue;
+
+            preciosMap.computeIfAbsent(clave, k -> new ArrayList<>()).add(precio);
+            origenMap.computeIfAbsent(clave, k -> new HashMap<>()).merge(origen, 1, Integer::sum);
         }
 
-        tabla.append("  </tbody>\n");
-        tabla.append("</table>\n");
+        // Ordenar por número de registros desc, limitar a 25
+        List<String> claves = new ArrayList<>(preciosMap.keySet());
+        claves.sort((a, b) -> preciosMap.get(b).size() - preciosMap.get(a).size());
+        if (claves.size() > 25) claves = claves.subList(0, 25);
+        // Reordenar alfabéticamente para la visualización
+        Collections.sort(claves);
 
-        return tabla.toString();
+        if (claves.isEmpty()) return "";
+
+        StringBuilder labels  = new StringBuilder("[");
+        StringBuilder precios = new StringBuilder("[");
+        StringBuilder bgs     = new StringBuilder("[");
+        StringBuilder borders = new StringBuilder("[");
+
+        for (int i = 0; i < claves.size(); i++) {
+            String clave = claves.get(i);
+            double avg = preciosMap.get(clave).stream()
+                                   .mapToDouble(Double::doubleValue).average().orElse(0);
+            String dominante = origenMap.get(clave).entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey).orElse("BD");
+            String[] c = coloresPorOrigen(dominante);
+
+            if (i > 0) { labels.append(","); precios.append(","); bgs.append(","); borders.append(","); }
+            labels.append("'").append(escapeJS(clave)).append("'");
+            precios.append(String.format(Locale.US, "%.2f", avg));
+            bgs.append("'").append(c[0]).append("'");
+            borders.append("'").append(c[1]).append("'");
+        }
+        labels.append("]"); precios.append("]"); bgs.append("]"); borders.append("]");
+
+        String nota = claves.size() == preciosMap.size()
+            ? claves.size() + " grupos · precio promedio"
+            : claves.size() + " de " + preciosMap.size() + " grupos · precio promedio";
+
+        return "<div class='card'>\n"
+            + "  <div class='card-head'><h2>📊 Precios por Producto</h2><span class='card-note'>" + nota + "</span></div>\n"
+            + "  <div class='chart-wrap'><canvas id='gchart'></canvas></div>\n"
+            + "  <div class='chart-legend'>\n"
+            + "    <span class='legend-item'><span class='legend-dot' style='background:#2E7D32'></span>Base de Datos</span>\n"
+            + "    <span class='legend-item'><span class='legend-dot' style='background:#1565C0'></span>AgroPrecios.com</span>\n"
+            + "    <span class='legend-item'><span class='legend-dot' style='background:#E64A19'></span>AgroPizarra.com</span>\n"
+            + "  </div>\n"
+            + "  <script>\n"
+            + "  (function(){\n"
+            + "    const labels  = " + labels  + ";\n"
+            + "    const precios = " + precios + ";\n"
+            + "    const bgs     = " + bgs     + ";\n"
+            + "    const borders = " + borders + ";\n"
+            + "    new Chart(document.getElementById('gchart'), {\n"
+            + "      type: 'bar',\n"
+            + "      data: { labels, datasets: [{ label:'Precio (€)', data:precios, backgroundColor:bgs, borderColor:borders, borderWidth:1.5, borderRadius:5, borderSkipped:false }] },\n"
+            + "      options: {\n"
+            + "        responsive:true, maintainAspectRatio:false,\n"
+            + "        plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: c => ' €'+parseFloat(c.raw).toFixed(2)+'/kg' }}},\n"
+            + "        scales: {\n"
+            + "          y: { beginAtZero:true, grid:{ color:'#EEF2F7' }, ticks:{ callback: v => '€'+v.toFixed(2) }},\n"
+            + "          x: { grid:{ display:false }, ticks:{ maxRotation:40, minRotation:20, font:{ size:11 }}}\n"
+            + "        }\n"
+            + "      }\n"
+            + "    });\n"
+            + "  })();\n"
+            + "  </script>\n"
+            + "</div>\n";
     }
+
+    private static String[] coloresPorOrigen(String origen) {
+        switch (origen) {
+            case "AGROPRECIOS": return new String[]{"rgba(21,101,192,0.75)", "rgba(21,101,192,1)"};
+            case "AGROPIZARRA": return new String[]{"rgba(230,74,25,0.75)",  "rgba(230,74,25,1)"};
+            default:            return new String[]{"rgba(46,125,50,0.75)",  "rgba(46,125,50,1)"};
+        }
+    }
+
+    // ─── Tabla ────────────────────────────────────────────────────────────────
+
+    private static String construirTabla(List<Map<String, Object>> productos) {
+        StringBuilder t = new StringBuilder();
+        t.append("<div class='card'>\n");
+        t.append("  <div class='card-head'><h2>📋 Listado de Precios</h2><span class='card-note'>").append(productos.size()).append(" registros</span></div>\n");
+        t.append("  <table>\n");
+        t.append("    <thead><tr>");
+        t.append("<th>Producto</th><th>Variedad</th><th>Fuente</th><th>Precio/kg</th><th>Origen</th>");
+        t.append("</tr></thead>\n");
+        t.append("    <tbody>\n");
+
+        for (Map<String, Object> p : productos) {
+            Object varObj = p.get("variedad");
+            String variedad = (varObj != null && !varObj.toString().trim().isEmpty())
+                              ? varObj.toString().trim() : null;
+
+            String origen = p.getOrDefault("origen", "BD").toString().toUpperCase();
+            String ornCls, ornLabel;
+            switch (origen) {
+                case "AGROPRECIOS": ornCls = "orn-agroprecios"; ornLabel = "🌐 AgroPrecios"; break;
+                case "AGROPIZARRA": ornCls = "orn-agropizarra"; ornLabel = "📊 AgroPizarra"; break;
+                default:            ornCls = "orn-bd";          ornLabel = "🗄️ BD";
+            }
+
+            t.append("      <tr>\n");
+            t.append("        <td>").append(escapeHTML(p.getOrDefault("nombre", "").toString())).append("</td>\n");
+            if (variedad != null)
+                t.append("        <td>").append(escapeHTML(variedad)).append("</td>\n");
+            else
+                t.append("        <td><span class='var-empty'>—</span></td>\n");
+            t.append("        <td>").append(escapeHTML(p.getOrDefault("fuente", "").toString())).append("</td>\n");
+            t.append("        <td class='precio'>€").append(String.format("%.2f", p.getOrDefault("precio", 0.0))).append("</td>\n");
+            t.append("        <td><span class='orn ").append(ornCls).append("'>").append(ornLabel).append("</span></td>\n");
+            t.append("      </tr>\n");
+        }
+
+        t.append("    </tbody>\n  </table>\n</div>\n");
+        return t.toString();
+    }
+
+    // ─── Utilidades ──────────────────────────────────────────────────────────
 
     private static String escapeHTML(String texto) {
-        return texto
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
-            .replace("'", "&#39;");
+        if (texto == null) return "";
+        return texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    .replace("\"", "&quot;").replace("'", "&#39;");
     }
+
+    private static String escapeJS(String texto) {
+        if (texto == null) return "";
+        return texto.replace("\\", "\\\\").replace("'", "\\'");
+    }
+
+    // ─── Respuesta HTTP ──────────────────────────────────────────────────────
 
     public static String construirRespuestaHTTP(String htmlContent) {
         try {
             byte[] bytes = htmlContent.getBytes("UTF-8");
-            return "HTTP/1.1 200 OK\r\n" +
-                   "Content-Type: text/html; charset=UTF-8\r\n" +
-                   "Content-Length: " + bytes.length + "\r\n" +
-                   "Connection: close\r\n" +
-                   "\r\n" +
-                   htmlContent;
+            return "HTTP/1.1 200 OK\r\n"
+                 + "Content-Type: text/html; charset=UTF-8\r\n"
+                 + "Content-Length: " + bytes.length + "\r\n"
+                 + "Connection: close\r\n\r\n"
+                 + htmlContent;
         } catch (Exception e) {
-            return "HTTP/1.1 500 Internal Server Error\r\n" +
-                   "Content-Type: text/plain; charset=UTF-8\r\n" +
-                   "\r\n" +
-                   "Error: " + e.getMessage();
+            return "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\nError: " + e.getMessage();
         }
     }
 }
