@@ -34,6 +34,7 @@ secrets.*.json
 *.sqlite
 *.sqlite3
 data/
+!agrocomparador/data/
 
 # ============================================
 # 📝 LOGS Y ARCHIVOS DE SALIDA
