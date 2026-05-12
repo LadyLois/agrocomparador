@@ -2,6 +2,11 @@
 # Script de inicio para producción (run_production.sh)
 # Uso: ./run_production.sh
 
+# Ir siempre a la raíz del proyecto (2 niveles arriba del script)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
 set -a  # Exportar todas las variables
 source .env.production  # Cargar variables de entorno
 set +a
