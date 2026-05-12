@@ -21,7 +21,7 @@ echo "   Puerto servidor: $PORT"
 LOG_FILE="agrocomparador.log"
 
 # Ejecutar aplicación en background con redirección de logs
-nohup java -Xmx256m -cp ".:mysql-connector-java-9.0.0.jar" agrocomparador >> "$LOG_FILE" 2>&1 &
+nohup java -Xmx256m -cp ".:mysql-connector-java-9.0.0.jar:jsoup-1.15.3.jar" agrocomparador >> "$LOG_FILE" 2>&1 &
 
 PID=$!
 echo "✅ Aplicación iniciada (PID: $PID)"
