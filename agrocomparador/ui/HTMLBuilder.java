@@ -6,6 +6,31 @@ import java.util.stream.Collectors;
 
 public class HTMLBuilder {
 
+    // ─── Alias de nombres de productos ───────────────────────────────────────
+    // Clave: prefijo en minúsculas sin tildes → Valor: nombre canónico
+    private static final Map<String, String> ALIAS_PRODUCTOS;
+    static {
+        ALIAS_PRODUCTOS = new LinkedHashMap<>();
+        ALIAS_PRODUCTOS.put("pto",       "Pimiento");
+        ALIAS_PRODUCTOS.put("pto.",      "Pimiento");
+        // Añadir aquí más alias según vayan apareciendo
+    }
+
+    // Devuelve el nombre canónico del producto (resuelve abreviaciones/alias)
+    private static String canonico(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) return "";
+        String raw   = nombre.trim();
+        String lower = raw.toLowerCase()
+            .replace("á","a").replace("é","e").replace("í","i")
+            .replace("ó","o").replace("ú","u").replace("ñ","n");
+        for (Map.Entry<String, String> e : ALIAS_PRODUCTOS.entrySet()) {
+            String alias = e.getKey();
+            if (lower.equals(alias))                 return e.getValue();
+            if (lower.startsWith(alias + " "))       return e.getValue() + raw.substring(alias.length());
+        }
+        return raw;
+    }
+
     // ─── Punto de entrada principal ──────────────────────────────────────────
 
     public static String construirRespuestaHTML(List<Map<String, Object>> productos,
@@ -253,7 +278,7 @@ public class HTMLBuilder {
         Set<String> clavesVistas = new java.util.HashSet<>();
 
         for (Map<String, Object> p : productos) {
-            String nombre   = p.getOrDefault("nombre", "").toString().trim();
+            String nombre   = canonico(p.getOrDefault("nombre", "").toString().trim());
             Object varObj   = p.get("variedad");
             String variedad = (varObj != null && !varObj.toString().trim().isEmpty())
                               ? varObj.toString().trim() : "";
@@ -351,10 +376,10 @@ public class HTMLBuilder {
     // ─── Tabla ────────────────────────────────────────────────────────────────
 
     private static String construirTabla(List<Map<String, Object>> productos) {
-        // Agrupar por nombre de producto manteniendo el orden de aparición
+        // Agrupar por nombre canónico (resuelve alias como Pto → Pimiento)
         Map<String, List<Map<String, Object>>> grupos = new LinkedHashMap<>();
         for (Map<String, Object> p : productos) {
-            String nombre = p.getOrDefault("nombre", "").toString().trim();
+            String nombre = canonico(p.getOrDefault("nombre", "").toString().trim());
             grupos.computeIfAbsent(nombre, k -> new ArrayList<>()).add(p);
         }
 
