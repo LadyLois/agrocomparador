@@ -34,7 +34,7 @@ public class HTMLBuilder {
     // ─── Punto de entrada principal ──────────────────────────────────────────
 
     public static String construirRespuestaHTML(List<Map<String, Object>> productos,
-            String error, String filtroAplicado, String accion) {
+            String error, String filtroAplicado, String accion, String filtroFecha) {
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html>\n<html lang='es'>\n<head>\n");
         html.append("<meta charset='UTF-8'>\n");
@@ -52,7 +52,7 @@ public class HTMLBuilder {
             html.append(construirBanner(accion));
 
         html.append(construirStatsGrid());
-        html.append(construirToolbar(filtroAplicado));
+        html.append(construirToolbar(filtroAplicado, filtroFecha));
 
         if (error != null && !error.isEmpty())
             html.append("<div class='alert alert-error'><span>⚠️</span> ").append(escapeHTML(error)).append("</div>\n");
@@ -74,8 +74,13 @@ public class HTMLBuilder {
     }
 
     public static String construirRespuestaHTML(List<Map<String, Object>> productos,
+            String error, String filtroAplicado, String accion) {
+        return construirRespuestaHTML(productos, error, filtroAplicado, accion, null);
+    }
+
+    public static String construirRespuestaHTML(List<Map<String, Object>> productos,
             String error, String filtroAplicado) {
-        return construirRespuestaHTML(productos, error, filtroAplicado, null);
+        return construirRespuestaHTML(productos, error, filtroAplicado, null, null);
     }
 
     // ─── CSS ─────────────────────────────────────────────────────────────────
@@ -161,10 +166,16 @@ public class HTMLBuilder {
             + ".orn-agropizarra { background:#FFCCBC; color:#BF360C; }\n"
             + ".var-empty { color:#C5CDD8; font-style:italic; }\n"
             + ".prod-icon { font-size:15px; vertical-align:middle; margin-right:4px; }\n"
-            + ".period-btns { display:flex; gap:6px; padding:8px 20px 12px; flex-wrap:wrap; border-bottom:1px solid #EEF2F7; }\n"
+            + ".date-select { padding:8px 12px; border:1.5px solid #E0E7EF; border-radius:8px; font-size:13px; color:#1A2332; background:#FAFBFC; outline:none; cursor:pointer; transition:border-color 0.2s; }\n"
+            + ".date-select:focus { border-color:#2E7D32; background:white; }\n"
+            + ".period-btns { display:flex; gap:6px; padding:8px 20px 12px; flex-wrap:wrap; border-bottom:1px solid #EEF2F7; align-items:center; }\n"
             + ".period-btn { padding:4px 14px; border:1.5px solid #D0D8E4; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; background:white; color:#5A6779; transition:all 0.15s; }\n"
             + ".period-btn:hover { border-color:#2E7D32; color:#2E7D32; }\n"
             + ".period-btn.active { background:#2E7D32; border-color:#2E7D32; color:white; }\n"
+            + ".period-btn.evo-btn { border-color:#7B1FA2; color:#7B1FA2; }\n"
+            + ".period-btn.evo-btn:hover { background:#7B1FA2; color:white; }\n"
+            + ".period-btn.evo-btn.active { background:#7B1FA2; border-color:#7B1FA2; color:white; }\n"
+            + ".period-sep { width:1px; height:20px; background:#D0D8E4; margin:0 4px; }\n"
             + ".group-header { cursor:pointer; }\n"
             + ".group-header td { background:#EEF2F7 !important; font-weight:700; font-size:13px; border-top:2px solid #D0D8E4; }\n"
             + ".group-header:hover td { background:#E2E8F2 !important; }\n"
@@ -248,17 +259,36 @@ public class HTMLBuilder {
 
     // ─── Toolbar (búsqueda + acciones) ────────────────────────────────────────
 
-    private static String construirToolbar(String filtro) {
+    private static String construirToolbar(String filtro, String filtroFecha) {
+        List<String> fechas = new ArrayList<>();
+        try { fechas = ProductoService.obtenerFechasDisponibles(); } catch (Exception ignored) {}
+
         StringBuilder tb = new StringBuilder();
         tb.append("<div class='toolbar'>\n");
         tb.append("  <form method='GET' action='/' style='display:flex;gap:8px;flex:1;min-width:0;align-items:center;flex-wrap:wrap;'>\n");
+
         tb.append("    <div class='search-wrap'>");
         tb.append("<input type='text' name='producto' placeholder='Buscar por producto, variedad, fuente u origen...' ");
         if (filtro != null && !filtro.isEmpty())
             tb.append("value='").append(escapeHTML(filtro)).append("'");
         tb.append("/></div>\n");
+
+        // Selector de fechas (solo si hay más de una fecha disponible)
+        if (fechas.size() > 0) {
+            tb.append("    <select name='fecha' class='date-select' onchange='this.form.submit()'>\n");
+            tb.append("      <option value=''>📅 Todas las fechas</option>\n");
+            for (String f : fechas) {
+                String fmt = formatearFechaCorta(f);
+                boolean sel = f.equals(filtroFecha);
+                tb.append("      <option value='").append(escapeHTML(f)).append("'")
+                  .append(sel ? " selected" : "").append(">").append(escapeHTML(fmt)).append("</option>\n");
+            }
+            tb.append("    </select>\n");
+        }
+
         tb.append("    <button type='submit' class='btn btn-primary'>Buscar</button>\n");
-        if (filtro != null && !filtro.isEmpty())
+        boolean hayFiltro = (filtro != null && !filtro.isEmpty()) || (filtroFecha != null && !filtroFecha.isEmpty());
+        if (hayFiltro)
             tb.append("    <a href='/' class='btn btn-ghost'>✕ Limpiar</a>\n");
         tb.append("  </form>\n");
         tb.append("  <div class='sep'></div>\n");
@@ -268,13 +298,20 @@ public class HTMLBuilder {
         return tb.toString();
     }
 
+    private static String formatearFechaCorta(String fecha) {
+        if (fecha == null || fecha.length() < 10) return fecha != null ? fecha : "";
+        try {
+            String[] d = fecha.substring(0, 10).split("-");
+            if (d.length == 3) return d[2] + "/" + d[1] + "/" + d[0];
+        } catch (Exception ignored) {}
+        return fecha;
+    }
+
     // ─── Gráfica Chart.js ─────────────────────────────────────────────────────
 
     private static String construirGrafica(List<Map<String, Object>> productos) {
-        // Construir array JS con todos los datos en bruto para filtrado en cliente
         StringBuilder rawDataJs = new StringBuilder("[");
         boolean firstItem = true;
-        int numGrupos = 0;
         Set<String> clavesVistas = new java.util.HashSet<>();
 
         for (Map<String, Object> p : productos) {
@@ -296,77 +333,133 @@ public class HTMLBuilder {
             rawDataJs.append("{k:'").append(escapeJS(clave))
                      .append("',v:").append(String.format(Locale.US, "%.2f", precio))
                      .append(",o:'").append(escapeJS(origen))
-                     .append("',d:'").append(escapeJS(fecha))
+                     .append("',d:'").append(escapeJS(fecha.length() >= 10 ? fecha.substring(0, 10) : fecha))
                      .append("'}");
         }
         rawDataJs.append("]");
-        numGrupos = clavesVistas.size();
 
-        if (numGrupos == 0) return "";
+        if (clavesVistas.isEmpty()) return "";
 
-        String nota = numGrupos + " grupos · precio medio";
+        String nota = clavesVistas.size() + " grupos · precio medio";
 
         return "<div class='card'>\n"
             + "  <div class='card-head'><h2>📊 Precio Medio por Producto</h2><span class='card-note'>" + nota + "</span></div>\n"
             + "  <div class='period-btns'>\n"
+            // Botones de periodo para el gráfico de barras
             + "    <button class='period-btn active' data-period='todo'>Todo</button>\n"
-            + "    <button class='period-btn' data-period='hoy'>Hoy</button>\n"
             + "    <button class='period-btn' data-period='7d'>7 días</button>\n"
             + "    <button class='period-btn' data-period='30d'>30 días</button>\n"
+            + "    <span class='period-sep'></span>\n"
+            // Botón evolución
+            + "    <button class='period-btn evo-btn' id='btn-evo'>📈 Evolución</button>\n"
             + "  </div>\n"
             + "  <div class='chart-wrap'><canvas id='gchart'></canvas></div>\n"
-            + "  <div class='chart-legend'>\n"
+            + "  <div class='chart-legend' id='legend-bar'>\n"
             + "    <span class='legend-item'><span class='legend-dot' style='background:#2E7D32'></span>Base de Datos</span>\n"
             + "    <span class='legend-item'><span class='legend-dot' style='background:#1565C0'></span>AgroPrecios.com</span>\n"
             + "    <span class='legend-item'><span class='legend-dot' style='background:#E64A19'></span>AgroPizarra.com</span>\n"
             + "  </div>\n"
+            + "  <div class='chart-legend' id='legend-evo' style='display:none'>\n"
+            + "    <span style='font-size:12px;color:#78909C'>Precio medio (€/kg) por fecha — top 8 productos</span>\n"
+            + "  </div>\n"
             + "  <script>\n"
             + "  (function(){\n"
             + "    var rawData=" + rawDataJs + ";\n"
+            + "    var palette=['#2E7D32','#1565C0','#E64A19','#7B1FA2','#F57F17','#00838F','#4E342E','#546E7A'];\n"
             + "    function clr(o,a){if(o==='AGROPRECIOS')return 'rgba(21,101,192,'+a+')';if(o==='AGROPIZARRA')return 'rgba(230,74,25,'+a+')';return 'rgba(46,125,50,'+a+')';}\n"
-            + "    function computeData(items){\n"
+
+            // ── Gráfico de barras (por producto) ──
+            + "    function computeBar(items){\n"
             + "      var g={};\n"
             + "      items.forEach(function(d){if(!d.v||d.v<=0||!d.k)return;if(!g[d.k])g[d.k]={s:0,n:0,oc:{}};g[d.k].s+=d.v;g[d.k].n++;g[d.k].oc[d.o]=(g[d.k].oc[d.o]||0)+1;});\n"
             + "      var ks=Object.keys(g).sort(function(a,b){return g[b].n-g[a].n;});\n"
             + "      if(ks.length>25)ks=ks.slice(0,25);\n"
             + "      ks.sort();\n"
-            + "      var labels=ks;\n"
             + "      var data=ks.map(function(k){return parseFloat((g[k].s/g[k].n).toFixed(2));});\n"
             + "      var bgs=ks.map(function(k){var mo=Object.keys(g[k].oc).reduce(function(a,b){return g[k].oc[a]>=g[k].oc[b]?a:b;});return clr(mo,'0.75');});\n"
             + "      var bds=ks.map(function(k){var mo=Object.keys(g[k].oc).reduce(function(a,b){return g[k].oc[a]>=g[k].oc[b]?a:b;});return clr(mo,'1');});\n"
-            + "      return {labels:labels,data:data,bgs:bgs,bds:bds};\n"
+            + "      return {labels:ks,data:data,bgs:bgs,bds:bds};\n"
             + "    }\n"
+
+            // ── Gráfico de líneas (evolución por fecha) ──
+            + "    function computeEvo(items){\n"
+            + "      var dates=[...new Set(items.map(function(d){return d.d||'';}).filter(Boolean))].sort();\n"
+            + "      var pc={};\n"
+            + "      items.forEach(function(d){if(d.k&&d.v>0)pc[d.k]=(pc[d.k]||0)+1;});\n"
+            + "      var top=Object.keys(pc).sort(function(a,b){return pc[b]-pc[a];}).slice(0,8).sort();\n"
+            + "      var datasets=top.map(function(prod,i){\n"
+            + "        var data=dates.map(function(date){\n"
+            + "          var pts=items.filter(function(d){return d.k===prod&&d.v>0&&d.d===date;});\n"
+            + "          return pts.length?parseFloat((pts.reduce(function(s,d){return s+d.v;},0)/pts.length).toFixed(2)):null;\n"
+            + "        });\n"
+            + "        return {label:prod,data:data,borderColor:palette[i%8],backgroundColor:palette[i%8]+'30',fill:false,tension:0.3,pointRadius:5,pointHoverRadius:7,spanGaps:true};\n"
+            + "      });\n"
+            + "      return {labels:dates,datasets:datasets};\n"
+            + "    }\n"
+
+            // ── Filtro por periodo ──
             + "    function filterPeriod(p){\n"
             + "      if(p==='todo')return rawData;\n"
-            + "      var ms=p==='hoy'?86400000:p==='7d'?604800000:2592000000;\n"
-            + "      var now=Date.now();\n"
-            + "      return rawData.filter(function(d){if(!d.d)return true;var t=new Date(d.d.replace(' ','T')).getTime();return isNaN(t)||(now-t)<=ms;});\n"
+            + "      var days=p==='7d'?7:30;\n"
+            + "      var cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);\n"
+            + "      var cutStr=cutoff.toISOString().substring(0,10);\n"
+            + "      return rawData.filter(function(d){return !d.d||d.d>=cutStr;});\n"
             + "    }\n"
-            + "    var cd=computeData(rawData);\n"
+
+            // ── Inicializar gráfico de barras ──
+            + "    var modoEvo=false;\n"
+            + "    var cd=computeBar(rawData);\n"
             + "    var chart=new Chart(document.getElementById('gchart'),{\n"
             + "      type:'bar',\n"
             + "      data:{labels:cd.labels,datasets:[{label:'Precio medio (€/kg)',data:cd.data,backgroundColor:cd.bgs,borderColor:cd.bds,borderWidth:1.5,borderRadius:5,borderSkipped:false}]},\n"
             + "      options:{\n"
             + "        responsive:true,maintainAspectRatio:false,\n"
             + "        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' €'+parseFloat(c.raw).toFixed(2)+'/kg (media)';}}}},\n"
-            + "        scales:{\n"
-            + "          y:{beginAtZero:true,grid:{color:'#EEF2F7'},ticks:{callback:function(v){return '€'+v.toFixed(2);}}},\n"
-            + "          x:{grid:{display:false},ticks:{maxRotation:40,minRotation:20,font:{size:11}}}\n"
-            + "        }\n"
+            + "        scales:{y:{beginAtZero:true,grid:{color:'#EEF2F7'},ticks:{callback:function(v){return '€'+v.toFixed(2);}}},x:{grid:{display:false},ticks:{maxRotation:40,minRotation:20,font:{size:11}}}}\n"
             + "      }\n"
             + "    });\n"
-            + "    document.querySelectorAll('.period-btn').forEach(function(btn){\n"
+
+            // ── Botones de periodo ──
+            + "    document.querySelectorAll('.period-btn:not(.evo-btn)').forEach(function(btn){\n"
             + "      btn.addEventListener('click',function(){\n"
-            + "        document.querySelectorAll('.period-btn').forEach(function(b){b.classList.remove('active');});\n"
+            + "        if(modoEvo)return;\n"
+            + "        document.querySelectorAll('.period-btn:not(.evo-btn)').forEach(function(b){b.classList.remove('active');});\n"
             + "        this.classList.add('active');\n"
             + "        var filtered=filterPeriod(this.dataset.period);\n"
-            + "        var cd=computeData(filtered);\n"
+            + "        var cd=computeBar(filtered);\n"
             + "        chart.data.labels=cd.labels;\n"
-            + "        chart.data.datasets[0].data=cd.data;\n"
-            + "        chart.data.datasets[0].backgroundColor=cd.bgs;\n"
-            + "        chart.data.datasets[0].borderColor=cd.bds;\n"
+            + "        chart.data.datasets=[{label:'Precio medio (€/kg)',data:cd.data,backgroundColor:cd.bgs,borderColor:cd.bds,borderWidth:1.5,borderRadius:5,borderSkipped:false}];\n"
+            + "        chart.config.type='bar';\n"
             + "        chart.update();\n"
             + "      });\n"
+            + "    });\n"
+
+            // ── Botón evolución (toggle) ──
+            + "    document.getElementById('btn-evo').addEventListener('click',function(){\n"
+            + "      modoEvo=!modoEvo;\n"
+            + "      this.classList.toggle('active',modoEvo);\n"
+            + "      document.getElementById('legend-bar').style.display=modoEvo?'none':'flex';\n"
+            + "      document.getElementById('legend-evo').style.display=modoEvo?'flex':'none';\n"
+            + "      document.querySelectorAll('.period-btn:not(.evo-btn)').forEach(function(b){b.disabled=modoEvo;b.style.opacity=modoEvo?'0.4':'1';});\n"
+            + "      if(modoEvo){\n"
+            + "        var ed=computeEvo(rawData);\n"
+            + "        chart.data.labels=ed.labels;\n"
+            + "        chart.data.datasets=ed.datasets;\n"
+            + "        chart.config.type='line';\n"
+            + "        chart.options.plugins.legend={display:true,position:'bottom',labels:{font:{size:11},boxWidth:14}};\n"
+            + "        chart.options.plugins.tooltip={callbacks:{label:function(c){return ' '+c.dataset.label+': €'+parseFloat(c.raw).toFixed(2)+'/kg';}}};\n"
+            + "        chart.update();\n"
+            + "      } else {\n"
+            + "        var activeBtn=document.querySelector('.period-btn:not(.evo-btn).active');\n"
+            + "        var period=activeBtn?activeBtn.dataset.period:'todo';\n"
+            + "        var cd=computeBar(filterPeriod(period));\n"
+            + "        chart.data.labels=cd.labels;\n"
+            + "        chart.data.datasets=[{label:'Precio medio (€/kg)',data:cd.data,backgroundColor:cd.bgs,borderColor:cd.bds,borderWidth:1.5,borderRadius:5,borderSkipped:false}];\n"
+            + "        chart.config.type='bar';\n"
+            + "        chart.options.plugins.legend={display:false};\n"
+            + "        chart.options.plugins.tooltip={callbacks:{label:function(c){return ' €'+parseFloat(c.raw).toFixed(2)+'/kg (media)';}}};\n"
+            + "        chart.update();\n"
+            + "      }\n"
             + "    });\n"
             + "  })();\n"
             + "  </script>\n"

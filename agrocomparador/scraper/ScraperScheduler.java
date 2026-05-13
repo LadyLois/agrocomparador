@@ -107,7 +107,6 @@ public class ScraperScheduler implements Runnable {
     private void guardarEnBaseDatos(List<Map<String, String>> productos) {
         if (productos.isEmpty()) return;
 
-        // Derivar el origen de los datos a partir del primer elemento
         String origen = productos.get(0).getOrDefault("origen", "SCRAPER");
 
         Connection conn = null;
@@ -116,8 +115,11 @@ public class ScraperScheduler implements Runnable {
             conn.setAutoCommit(false);
 
             try {
-                // Reemplazar datos anteriores de este mismo origen en lugar de acumularlos
-                limpiarDatosPorOrigen(conn, origen);
+                if (tieneDatosDeHoy(conn, origen)) {
+                    System.out.println("   ℹ️ Ya existen datos de " + origen + " para hoy, omitiendo inserción");
+                    conn.setAutoCommit(true);
+                    return;
+                }
 
                 String sql = "INSERT INTO precios_scraper " +
                             "(nombre, variedad, fuente, precio, origen, fecha_actualizacion) " +
@@ -149,7 +151,7 @@ public class ScraperScheduler implements Runnable {
                 }
 
                 conn.commit();
-                System.out.println("   ✓ " + productos.size() + " registros de " + origen + " guardados en BD");
+                System.out.println("   ✓ " + productos.size() + " registros de " + origen + " guardados en BD (" + java.time.LocalDate.now() + ")");
 
             } catch (SQLException e) {
                 conn.rollback();
@@ -162,6 +164,16 @@ public class ScraperScheduler implements Runnable {
             if (conn != null) {
                 try { conn.setAutoCommit(true); } catch (SQLException ignored) {}
                 DatabaseConnection.closeConnection(conn);
+            }
+        }
+    }
+
+    private boolean tieneDatosDeHoy(Connection conn, String origen) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM precios_scraper WHERE origen = ? AND DATE(fecha_actualizacion) = CURDATE()";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, origen);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
             }
         }
     }
@@ -186,16 +198,4 @@ public class ScraperScheduler implements Runnable {
         }
     }
 
-    // Elimina todos los registros de un origen antes de insertar los nuevos,
-    // evitando acumulación de datos duplicados por ejecución
-    private void limpiarDatosPorOrigen(Connection conn, String origen) throws SQLException {
-        String sql = "DELETE FROM precios_scraper WHERE origen = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, origen);
-            int eliminados = stmt.executeUpdate();
-            if (eliminados > 0) {
-                System.out.println("   🧹 Eliminados " + eliminados + " registros anteriores de " + origen);
-            }
-        }
-    }
 }

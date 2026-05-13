@@ -69,6 +69,10 @@ public class ProductoService {
         return todos.stream().filter(p -> coincide(p, filtro)).collect(Collectors.toList());
     }
 
+    public static boolean coincidePublico(Map<String, Object> producto, String filtro) {
+        return coincide(producto, filtro);
+    }
+
     private static boolean coincide(Map<String, Object> producto, String filtro) {
         String f = normalizar(filtro);
         return normalizar(producto.getOrDefault("nombre",   "").toString()).contains(f)
@@ -123,6 +127,27 @@ public class ProductoService {
             .count();
     }
     
+    public static List<String> obtenerFechasDisponibles() {
+        return ProductoDAOScraper.obtenerFechasDisponibles();
+    }
+
+    public static List<Map<String, Object>> obtenerProductosPorFechaCombinados(String fecha) {
+        List<Map<String, Object>> productos = new ArrayList<>(ProductoDAO.obtenerProductos());
+        List<Map<String, String>> scraped = ProductoDAOScraper.obtenerProductosPorFecha(fecha);
+        for (Map<String, String> p : scraped) {
+            Map<String, Object> producto = new HashMap<>();
+            producto.put("nombre",              p.getOrDefault("nombre", ""));
+            producto.put("variedad",            p.getOrDefault("variedad", ""));
+            producto.put("fuente",              p.getOrDefault("fuente", ""));
+            try { producto.put("precio", Double.parseDouble(p.getOrDefault("precio", "0"))); }
+            catch (NumberFormatException e) { producto.put("precio", 0.0); }
+            producto.put("origen",              p.getOrDefault("origen", "SCRAPER"));
+            producto.put("fecha_actualizacion", p.getOrDefault("fecha_actualizacion", ""));
+            productos.add(producto);
+        }
+        return productos;
+    }
+
     public static void vaciarDatosScraper() {
         ProductoDAOScraper.vaciarDatos();
     }

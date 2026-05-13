@@ -19,9 +19,13 @@ public class ProductoDAOScraper {
         try {
             conn = DatabaseConnection.getConnection();
             
-            String sql = "SELECT nombre, variedad, fuente, precio, origen, fecha_actualizacion " +
-                        "FROM precios_scraper " +
-                        "ORDER BY nombre, precio " +
+            // Muestra solo los datos del día más reciente disponible por origen
+            String sql = "SELECT p.nombre, p.variedad, p.fuente, p.precio, p.origen, p.fecha_actualizacion " +
+                        "FROM precios_scraper p " +
+                        "WHERE DATE(p.fecha_actualizacion) = (" +
+                        "  SELECT MAX(DATE(p2.fecha_actualizacion)) FROM precios_scraper p2 WHERE p2.origen = p.origen" +
+                        ") " +
+                        "ORDER BY p.nombre, p.precio " +
                         "LIMIT 1000";
             
             try (Statement stmt = conn.createStatement();
@@ -51,6 +55,60 @@ public class ProductoDAOScraper {
         return productos;
     }
     
+    public static List<String> obtenerFechasDisponibles() {
+        List<String> fechas = new ArrayList<>();
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            String sql = "SELECT DISTINCT DATE(fecha_actualizacion) AS fecha FROM precios_scraper ORDER BY fecha DESC";
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String f = rs.getString("fecha");
+                    if (f != null) fechas.add(f);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error obteniendo fechas disponibles: " + e.getMessage());
+        } finally {
+            if (conn != null) DatabaseConnection.closeConnection(conn);
+        }
+        return fechas;
+    }
+
+    public static List<Map<String, String>> obtenerProductosPorFecha(String fecha) {
+        List<Map<String, String>> productos = new ArrayList<>();
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            String sql = "SELECT p.nombre, p.variedad, p.fuente, p.precio, p.origen, p.fecha_actualizacion " +
+                        "FROM precios_scraper p " +
+                        "WHERE DATE(p.fecha_actualizacion) = ? " +
+                        "ORDER BY p.nombre, p.precio " +
+                        "LIMIT 1000";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, fecha);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        Map<String, String> producto = new HashMap<>();
+                        producto.put("nombre",              safe(rs.getString("nombre")));
+                        producto.put("variedad",            safe(rs.getString("variedad")));
+                        producto.put("fuente",              safe(rs.getString("fuente")));
+                        producto.put("precio",              String.valueOf(rs.getDouble("precio")));
+                        producto.put("origen",              safe(rs.getString("origen")));
+                        producto.put("fecha_actualizacion", safe(rs.getString("fecha_actualizacion")));
+                        productos.add(producto);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error obteniendo productos por fecha: " + e.getMessage());
+        } finally {
+            if (conn != null) DatabaseConnection.closeConnection(conn);
+        }
+        return productos;
+    }
+
     public static void vaciarDatos() {
         Connection conn = null;
         try {

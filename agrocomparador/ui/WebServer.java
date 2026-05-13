@@ -51,23 +51,34 @@ public class WebServer {
 
             String filtroProducto = params.get("producto");
             if (filtroProducto != null) filtroProducto = URLDecoder.decode(filtroProducto, "UTF-8");
+            String filtroFecha = params.get("fecha");
+            if (filtroFecha != null) filtroFecha = URLDecoder.decode(filtroFecha, "UTF-8");
             String accion = params.get("accion");
 
             List<Map<String, Object>> productos = null;
             String error = null;
 
             try {
-                if (filtroProducto != null && !filtroProducto.trim().isEmpty()) {
-                    productos = ProductoService.obtenerProductosPorNombreCombinados(filtroProducto);
+                List<Map<String, Object>> base;
+                if (filtroFecha != null && !filtroFecha.trim().isEmpty()) {
+                    base = ProductoService.obtenerProductosPorFechaCombinados(filtroFecha);
                 } else {
-                    productos = ProductoService.obtenerTodosLosProductosCombinados();
+                    base = ProductoService.obtenerTodosLosProductosCombinados();
+                }
+                if (filtroProducto != null && !filtroProducto.trim().isEmpty()) {
+                    final String fp = filtroProducto;
+                    productos = base.stream()
+                        .filter(p -> ProductoService.coincidePublico(p, fp))
+                        .collect(java.util.stream.Collectors.toList());
+                } else {
+                    productos = base;
                 }
             } catch (Exception e) {
                 error = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
                 System.err.println("❌ Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
 
-            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto, accion);
+            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto, accion, filtroFecha);
             String respuestaHTTP = HTMLBuilder.construirRespuestaHTTP(htmlContent);
 
             salida.write(respuestaHTTP.getBytes("UTF-8"));
@@ -97,6 +108,8 @@ public class WebServer {
         salida.flush();
     }
 }
+
+
 
 
 
