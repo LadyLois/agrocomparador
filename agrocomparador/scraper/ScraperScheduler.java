@@ -22,7 +22,6 @@ public class ScraperScheduler implements Runnable {
 
     public void iniciar() {
         if (thread == null || !thread.isAlive()) {
-            inicializarTabla();
             thread = new Thread(this, "ScraperScheduler");
             thread.setDaemon(true);
             thread.start();
@@ -32,9 +31,7 @@ public class ScraperScheduler implements Runnable {
 
     public void detener() {
         activo = false;
-        if (thread != null) {
-            thread.interrupt();
-        }
+        if (thread != null) thread.interrupt();
         System.out.println("🛑 Deteniendo scheduler de scraper...");
     }
 
@@ -56,29 +53,22 @@ public class ScraperScheduler implements Runnable {
         while (activo) {
             try {
                 actualizarDatos();
-
                 long tiempoEspera = INTERVALO_MINUTOS * 60 * 1000L;
                 System.out.println("⏳ Próxima actualización en " + INTERVALO_MINUTOS + " minutos");
                 Thread.sleep(tiempoEspera);
-
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
                 System.err.println("❌ Error en scheduler: " + e.getMessage());
-                try {
-                    Thread.sleep(5 * 60 * 1000L);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+                try { Thread.sleep(5 * 60 * 1000L); }
+                catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
             }
         }
     }
 
     private void actualizarDatos() {
         System.out.println("\n📥 Iniciando actualización de datos desde las fuentes...");
-
         actualizarFuente("AgroPrecios.com", AgrePreciosScraperDAO.obtenerProductosDesdeScraper());
         actualizarFuente("AgroPizarra.com", AgroPizarraScraperDAO.obtenerProductosDesdeScraper());
     }
@@ -89,19 +79,7 @@ public class ScraperScheduler implements Runnable {
             return;
         }
         guardarEnBaseDatos(productos);
-        System.out.println("✓ " + nombre + ": " + productos.size() + " registros guardados");
-    }
-
-    private void inicializarTabla() {
-        Connection conn = null;
-        try {
-            conn = DatabaseConnection.getConnection();
-            crearTablaSiNoExiste(conn);
-        } catch (SQLException e) {
-            System.err.println("❌ Error al inicializar tabla del scraper: " + e.getMessage());
-        } finally {
-            if (conn != null) DatabaseConnection.closeConnection(conn);
-        }
+        System.out.println("✓ " + nombre + ": " + productos.size() + " registros procesados");
     }
 
     private void guardarEnBaseDatos(List<Map<String, String>> productos) {
@@ -121,37 +99,26 @@ public class ScraperScheduler implements Runnable {
                     return;
                 }
 
-                String sql = "INSERT INTO precios_scraper " +
-                            "(nombre, variedad, fuente, precio, origen, fecha_actualizacion) " +
-                            "VALUES (?, ?, ?, ?, ?, NOW())";
+                int insertados = 0;
+                for (Map<String, String> p : productos) {
+                    String nombre   = p.getOrDefault("nombre", "").trim();
+                    String variedad = p.getOrDefault("variedad", "").trim();
+                    String fuente   = p.getOrDefault("fuente", origen).trim();
+                    double precio;
+                    try { precio = Double.parseDouble(p.getOrDefault("precio", "0")); }
+                    catch (NumberFormatException e) { precio = 0.0; }
 
-                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    int insertados = 0;
-                    for (Map<String, String> p : productos) {
-                        stmt.setString(1, p.getOrDefault("nombre", ""));
-                        stmt.setString(2, p.getOrDefault("variedad", ""));
-                        stmt.setString(3, p.getOrDefault("fuente", origen));
-                        double precio;
-                        try {
-                            precio = Double.parseDouble(p.getOrDefault("precio", "0"));
-                        } catch (NumberFormatException e) {
-                            precio = 0.0;
-                        }
-                        stmt.setDouble(4, precio);
-                        stmt.setString(5, origen);
+                    if (nombre.isEmpty() || precio <= 0) continue;
 
-                        stmt.addBatch();
-
-                        if (++insertados % 100 == 0) {
-                            stmt.executeBatch();
-                            System.out.println("   → Insertados " + insertados + " registros...");
-                        }
-                    }
-                    stmt.executeBatch();
+                    int productoId = obtenerOCrearProducto(conn, nombre, variedad);
+                    int fuenteId   = obtenerOCrearFuente(conn, fuente);
+                    insertarPrecio(conn, productoId, fuenteId, precio, origen);
+                    insertados++;
                 }
 
                 conn.commit();
-                System.out.println("   ✓ " + productos.size() + " registros de " + origen + " guardados en BD (" + java.time.LocalDate.now() + ")");
+                System.out.println("   ✓ " + insertados + " registros de " + origen +
+                    " guardados en BD (" + java.time.LocalDate.now() + ")");
 
             } catch (SQLException e) {
                 conn.rollback();
@@ -169,7 +136,7 @@ public class ScraperScheduler implements Runnable {
     }
 
     private boolean tieneDatosDeHoy(Connection conn, String origen) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM precios_scraper WHERE origen = ? AND DATE(fecha_actualizacion) = CURDATE()";
+        String sql = "SELECT COUNT(*) FROM precios WHERE origen = ? AND DATE(fecha) = CURDATE()";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, origen);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -178,24 +145,63 @@ public class ScraperScheduler implements Runnable {
         }
     }
 
-    private void crearTablaSiNoExiste(Connection conn) throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS precios_scraper (" +
-                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                    "nombre VARCHAR(255) NOT NULL, " +
-                    "variedad VARCHAR(255), " +
-                    "fuente VARCHAR(255), " +
-                    "precio DECIMAL(10, 2), " +
-                    "origen VARCHAR(50), " +
-                    "fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                    "INDEX idx_nombre (nombre), " +
-                    "INDEX idx_fecha (fecha_actualizacion), " +
-                    "INDEX idx_origen (origen)" +
-                    ")";
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.executeUpdate(sql);
-            System.out.println("   ✓ Tabla precios_scraper lista");
+    private int obtenerOCrearProducto(Connection conn, String nombre, String variedad) throws SQLException {
+        String varBuscar = variedad.isEmpty() ? null : variedad;
+        String sql = "SELECT id FROM productos WHERE nombre = ? AND " +
+                    (varBuscar == null ? "variedad IS NULL" : "variedad = ?");
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, nombre);
+            if (varBuscar != null) stmt.setString(2, varBuscar);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt("id");
+            }
         }
+        String ins = "INSERT INTO productos (nombre, variedad, created_at) VALUES (?, ?, NOW())";
+        try (PreparedStatement stmt = conn.prepareStatement(ins, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, nombre);
+            stmt.setString(2, varBuscar);
+            stmt.executeUpdate();
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        }
+        throw new SQLException("No se pudo crear el producto: " + nombre);
     }
 
+    private int obtenerOCrearFuente(Connection conn, String nombre) throws SQLException {
+        String sql = "SELECT id FROM fuentes WHERE nombre = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, nombre);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt("id");
+            }
+        }
+        // INSERT IGNORE por si hay condición de carrera entre hilos
+        String ins = "INSERT IGNORE INTO fuentes (nombre, created_at) VALUES (?, NOW())";
+        try (PreparedStatement stmt = conn.prepareStatement(ins)) {
+            stmt.setString(1, nombre);
+            stmt.executeUpdate();
+        }
+        // Volver a leer el id (puede que ya existiera por la condición de carrera)
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, nombre);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt("id");
+            }
+        }
+        throw new SQLException("No se pudo crear la fuente: " + nombre);
+    }
+
+    private void insertarPrecio(Connection conn, int productoId, int fuenteId,
+                                double precio, String origen) throws SQLException {
+        String sql = "INSERT INTO precios (producto_id, fuente_id, precio, fecha, origen) " +
+                    "VALUES (?, ?, ?, NOW(), ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, productoId);
+            stmt.setInt(2, fuenteId);
+            stmt.setDouble(3, precio);
+            stmt.setString(4, origen);
+            stmt.executeUpdate();
+        }
+    }
 }

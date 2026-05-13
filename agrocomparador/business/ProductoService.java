@@ -31,29 +31,21 @@ public class ProductoService {
      * @return Lista de productos de ambas fuentes
      */
     public static List<Map<String, Object>> obtenerTodosLosProductosCombinados() {
+        // Datos BD legacy + datos scrapeados, todos en la misma tabla precios
         List<Map<String, Object>> productos = new ArrayList<>(ProductoDAO.obtenerProductos());
-        
-        // Obtener datos del scraper almacenados en BD
-        List<Map<String, String>> scrapedRaw = ProductoDAOScraper.obtenerProductosDelScraper();
-        
-        // Convertir a formato compatible
-        for (Map<String, String> p : scrapedRaw) {
+
+        for (Map<String, String> p : ProductoDAOScraper.obtenerProductosDelScraper()) {
             Map<String, Object> producto = new HashMap<>();
-            producto.put("nombre", p.getOrDefault("nombre", ""));
-            producto.put("variedad", p.getOrDefault("variedad", ""));
-            producto.put("fuente", p.getOrDefault("fuente", "AgroPrecios"));
-            
-            try {
-                producto.put("precio", Double.parseDouble(p.getOrDefault("precio", "0")));
-            } catch (NumberFormatException e) {
-                producto.put("precio", 0.0);
-            }
-            
-            producto.put("origen", p.getOrDefault("origen", "SCRAPER"));
+            producto.put("nombre",              p.getOrDefault("nombre", ""));
+            producto.put("variedad",            p.getOrDefault("variedad", ""));
+            producto.put("fuente",              p.getOrDefault("fuente", ""));
+            try { producto.put("precio", Double.parseDouble(p.getOrDefault("precio", "0"))); }
+            catch (NumberFormatException e) { producto.put("precio", 0.0); }
+            producto.put("origen",              p.getOrDefault("origen", "SCRAPER"));
             producto.put("fecha_actualizacion", p.getOrDefault("fecha_actualizacion", ""));
             productos.add(producto);
         }
-        
+
         return productos;
     }
     
