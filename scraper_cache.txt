@@ -1,94 +1,93 @@
-# Cache AgroPrecios – 2026-05-13 20:18:07
-Tomate	0.98	Agrupados	Daniela Verde
-Tomate	1.03	Cehorpa	Daniela
-Tomate	0.7	Agroponiente	Daniela
-Tomate	1.2	La Union	Daniela
-Tomate	0.83	Agroejido	Pera
-Tomate	0.79	Cehorpa	Pera
-Tomate	0.86	Agroponiente	Pera
-Tomate	0.82	La Union	Pera
-Tomate	0.87	Agrupados	Pera
-Tomate	0.58	Agroponiente	Ramo
-Pepino	0.4	Agrop. Adra	Frances
-Pepino	0.41	Agroejido	Frances
-Pepino	0.33	Cehorpa	Frances
+# Cache AgroPrecios – 2026-05-14 14:21:19
+Tomate	0.58	Agrupados	Daniela Verde
+Tomate	1.06	Cehorpa	Daniela
+Tomate	0.48	Agroponiente	Daniela
+Tomate	1.01	La Union	Daniela
+Tomate	0.78	Agroejido	Pera
+Tomate	0.66	Cehorpa	Pera
+Tomate	0.82	Agroponiente	Pera
+Tomate	0.79	La Union	Pera
+Tomate	0.79	Agrupados	Pera
+Tomate	0.51	Agroponiente	Ramo
+Pepino	0.38	Agrop. Adra	Frances
+Pepino	0.4	Agroejido	Frances
+Pepino	0.25	Cehorpa	Frances
 Pepino	0.39	Agroponiente	Frances
-Pepino	0.37	La Union	Frances
-Pepino	0.26	Costa de Almeria	Frances
-Pepino	0.4	Agrupados	Frances
-Pepino	0.52	Agrop. Adra	Español
-Pepino	0.59	Agroejido	Español
-Pepino	0.57	Cehorpa	Español
-Pepino	0.54	Agroponiente	Español
-Pepino	0.51	La Union	Español
-Pepino	0.35	Costa de Almeria	Español
-Pepino	0.64	Agrupados	Español
-Pepino	0.46	Agrop. Adra	Almeria
-Pepino	0.48	Agroejido	Almeria
+Pepino	0.35	La Union	Frances
+Pepino	0.27	Costa de Almeria	Frances
+Pepino	0.33	Agrupados	Frances
+Pepino	0.59	Agrop. Adra	Español
+Pepino	0.57	Agroejido	Español
+Pepino	0.4	Cehorpa	Español
+Pepino	0.52	Agroponiente	Español
+Pepino	0.5	La Union	Español
+Pepino	0.46	Agrupados	Español
+Pepino	0.5	Agrop. Adra	Almeria
+Pepino	0.53	Agroejido	Almeria
 Pepino	0.42	Cehorpa	Almeria
 Pepino	0.52	Agroponiente	Almeria
-Pepino	0.51	La Union	Almeria
-Pepino	0.56	Costa de Almeria	Almeria
-Pepino	0.51	Agrupados	Almeria
-Calabacin	0.85	Agrop. Adra	Fino
+Pepino	0.56	La Union	Almeria
+Pepino	0.57	Costa de Almeria	Almeria
+Pepino	0.5	Agrupados	Almeria
+Calabacin	0.8	Agrop. Adra	Fino
 Calabacin	0.8	Agroejido	Fino
-Calabacin	0.65	Cehorpa	Fino
+Calabacin	0.71	Cehorpa	Fino
 Calabacin	0.81	Agroponiente	Fino
-Calabacin	0.81	La Union	Fino
-Calabacin	0.64	Costa de Almeria	Fino
-Calabacin	0.7	Agrupados	Fino
-Calabacin	0.8	Agrop. Adra	Gordo
-Calabacin	0.72	Agroejido	Gordo
-Calabacin	0.6	Cehorpa	Gordo
+Calabacin	0.73	La Union	Fino
+Calabacin	0.73	Costa de Almeria	Fino
+Calabacin	0.73	Agrupados	Fino
+Calabacin	0.71	Agrop. Adra	Gordo
+Calabacin	0.7	Agroejido	Gordo
+Calabacin	0.61	Cehorpa	Gordo
 Calabacin	0.81	Agroponiente	Gordo
-Calabacin	0.72	La Union	Gordo
-Calabacin	0.5	Costa de Almeria	Gordo
-Calabacin	0.67	Agrupados	Gordo
-Berenjena	1.07	Agrop. Adra	Larga
-Berenjena	1.11	Agroejido	Larga
-Berenjena	0.89	Cehorpa	Larga
-Berenjena	1.13	Agroponiente	Larga
-Berenjena	0.9	La Union	Larga
-Berenjena	0.56	Costa de Almeria	Larga
-Berenjena	1.0	Agrupados	Larga
-Berenjena	2.8	Agrop. Adra	Blanca
-Berenjena	2.8	Agroejido	Blanca
-Berenjena	2.58	Agroponiente	Blanca
-Berenjena	1.59	La Union	Blanca
-Berenjena	1.9	Agrupados	Blanca
-Judia	3.94	Agrop. Adra	Helda
-Judia	4.49	Agroejido	Helda
-Judia	3.5	Cehorpa	Helda
-Judia	4.5	Agroponiente	Helda
-Judia	1.99	La Union	Helda
-Pimiento	1.7	Agroejido	Largo Verde
-Pimiento	1.45	Cehorpa	Largo Verde
-Pimiento	1.45	Agroponiente	Largo Verde
-Pimiento	1.11	La Union	Largo Verde
-Pimiento	0.67	Costa de Almeria	Largo Verde
-Pimiento	1.33	Agrupados	Largo Verde
-Pimiento	1.52	Agroejido	Largo Rojo
-Pimiento	1.1	Cehorpa	Largo Rojo
-Pimiento	1.78	Agroponiente	Largo Rojo
-Pimiento	1.25	La Union	Largo Rojo
-Pimiento	1.01	Costa de Almeria	Largo Rojo
-Pimiento	1.5	Agrupados	Largo Rojo
-Pimiento	0.78	Agrop. Adra	Corto Verde
-Pimiento	0.8	Agroejido	Corto Verde
-Pimiento	0.78	Agroponiente	Corto Verde
-Pimiento	0.71	La Union	Corto Verde
-Pimiento	0.64	Agrupados	Corto Verde
-Pimiento	0.59	Agrop. Adra	Corto Rojo
-Pimiento	0.63	Agroejido	Corto Rojo
-Pimiento	0.67	Agroponiente	Corto Rojo
-Pimiento	0.5	La Union	Corto Rojo
-Pimiento	0.61	Costa de Almeria	Corto Rojo
-Pimiento	0.64	Agrupados	Corto Rojo
-Pimiento	0.71	Agrop. Adra	Italiano Verde
-Pimiento	1.06	Agroejido	Italiano Verde
-Pimiento	0.89	Cehorpa	Italiano Verde
-Pimiento	0.93	Agroponiente	Italiano Verde
-Pimiento	0.82	La Union	Italiano Verde
-Pimiento	0.28	Costa de Almeria	Italiano Verde
-Pimiento	1.02	Agrupados	Italiano Verde
-Pimiento	2.31	Agroejido	Palermo
+Calabacin	0.64	La Union	Gordo
+Calabacin	0.58	Costa de Almeria	Gordo
+Calabacin	0.64	Agrupados	Gordo
+Berenjena	0.98	Agrop. Adra	Larga
+Berenjena	1.06	Agroejido	Larga
+Berenjena	0.65	Cehorpa	Larga
+Berenjena	1.14	Agroponiente	Larga
+Berenjena	1.0	La Union	Larga
+Berenjena	0.62	Costa de Almeria	Larga
+Berenjena	0.93	Agrupados	Larga
+Berenjena	1.47	Agrop. Adra	Blanca
+Berenjena	2.0	Agroejido	Blanca
+Berenjena	1.36	Cehorpa	Blanca
+Berenjena	2.5	Agroponiente	Blanca
+Berenjena	1.54	La Union	Blanca
+Berenjena	1.72	Agrupados	Blanca
+Judia	3.98	Agrop. Adra	Helda
+Judia	4.55	Agroejido	Helda
+Judia	3.92	Cehorpa	Helda
+Judia	4.68	Agroponiente	Helda
+Pimiento	1.38	Agroejido	Largo Verde
+Pimiento	1.16	Cehorpa	Largo Verde
+Pimiento	1.29	Agroponiente	Largo Verde
+Pimiento	0.87	La Union	Largo Verde
+Pimiento	1.28	Agrupados	Largo Verde
+Pimiento	1.4	Agroejido	Largo Rojo
+Pimiento	1.2	Cehorpa	Largo Rojo
+Pimiento	1.83	Agroponiente	Largo Rojo
+Pimiento	1.17	La Union	Largo Rojo
+Pimiento	1.0	Costa de Almeria	Largo Rojo
+Pimiento	1.48	Agrupados	Largo Rojo
+Pimiento	0.59	Agrop. Adra	Corto Verde
+Pimiento	0.76	Agroejido	Corto Verde
+Pimiento	0.76	Agroponiente	Corto Verde
+Pimiento	0.65	La Union	Corto Verde
+Pimiento	0.68	Agrupados	Corto Verde
+Pimiento	0.68	Agrop. Adra	Corto Rojo
+Pimiento	0.61	Agroejido	Corto Rojo
+Pimiento	0.58	Cehorpa	Corto Rojo
+Pimiento	0.63	Agroponiente	Corto Rojo
+Pimiento	0.49	La Union	Corto Rojo
+Pimiento	0.56	Costa de Almeria	Corto Rojo
+Pimiento	0.63	Agrupados	Corto Rojo
+Pimiento	0.74	Agrop. Adra	Italiano Verde
+Pimiento	0.88	Agroejido	Italiano Verde
+Pimiento	0.83	Cehorpa	Italiano Verde
+Pimiento	0.98	Agroponiente	Italiano Verde
+Pimiento	0.87	La Union	Italiano Verde
+Pimiento	0.44	Costa de Almeria	Italiano Verde
+Pimiento	0.93	Agrupados	Italiano Verde
+Pimiento	2.65	Agroejido	Palermo

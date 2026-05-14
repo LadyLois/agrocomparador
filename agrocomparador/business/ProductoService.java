@@ -140,12 +140,40 @@ public class ProductoService {
         return productos;
     }
 
+    public static List<Map<String, Object>> obtenerProductosPorRangoCombinados(String desde, String hasta) {
+        List<Map<String, Object>> productos = new ArrayList<>(ProductoDAO.obtenerProductos());
+        for (Map<String, String> p : ProductoDAOScraper.obtenerProductosPorRangoFechas(desde, hasta)) {
+            Map<String, Object> producto = new HashMap<>();
+            producto.put("nombre",              p.getOrDefault("nombre", ""));
+            producto.put("variedad",            p.getOrDefault("variedad", ""));
+            producto.put("fuente",              p.getOrDefault("fuente", ""));
+            try { producto.put("precio", Double.parseDouble(p.getOrDefault("precio", "0"))); }
+            catch (NumberFormatException e) { producto.put("precio", 0.0); }
+            producto.put("origen",              p.getOrDefault("origen", "SCRAPER"));
+            producto.put("fecha_actualizacion", p.getOrDefault("fecha_actualizacion", ""));
+            productos.add(producto);
+        }
+        return productos;
+    }
+
     public static void vaciarDatosScraper() {
         ProductoDAOScraper.vaciarDatos();
     }
 
+    public static void vaciarDatosScraperPorFecha(String fecha) {
+        ProductoDAOScraper.vaciarDatosPorFecha(fecha);
+    }
+
     public static void forzarCargaDatos() {
-        ScraperScheduler.getInstance().forzarActualizacionAsincrona();
+        forzarCargaDatos(null);
+    }
+
+    public static void forzarCargaDatos(String fecha) {
+        ScraperScheduler.getInstance().forzarActualizacionAsincrona(fecha);
+    }
+
+    public static Set<String> obtenerFechasEnProceso() {
+        return ScraperScheduler.getFechasEnProceso();
     }
 
     /**

@@ -21,14 +21,19 @@ public class AgrePreciosScraperDAO {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     public static List<Map<String, String>> obtenerProductosDesdeScraper() {
+        return obtenerProductosDesdeScraper(null);
+    }
+
+    public static List<Map<String, String>> obtenerProductosDesdeScraper(String fecha) {
+        String urlBase = buildUrl(BASE_URL, fecha);
         for (int intento = 1; intento <= MAX_REINTENTOS; intento++) {
             try {
                 System.out.println("🔄 Intento " + intento + "/" + MAX_REINTENTOS + " – agroprecios.com");
-                Document docPrincipal = conectar(BASE_URL);
-                List<Map<String, String>> todos = scrapearTodosLosProductos(docPrincipal);
+                Document docPrincipal = conectar(urlBase);
+                List<Map<String, String>> todos = scrapearTodosLosProductos(docPrincipal, fecha);
 
                 if (!todos.isEmpty()) {
-                    guardarCacheLocal(todos);
+                    if (fecha == null || fecha.isEmpty()) guardarCacheLocal(todos);
                     System.out.println("✓ AgroPrecios.com: " + todos.size() + " registros en total");
                     return todos;
                 }
@@ -38,16 +43,26 @@ public class AgrePreciosScraperDAO {
             }
         }
 
-        System.out.println("⚠️ Usando caché local...");
-        List<Map<String, String>> cache = cargarCacheLocal();
-        if (!cache.isEmpty()) System.out.println("✓ " + cache.size() + " registros del caché");
-        else System.out.println("❌ Sin caché disponible.");
-        return cache;
+        if (fecha == null || fecha.isEmpty()) {
+            System.out.println("⚠️ Usando caché local...");
+            List<Map<String, String>> cache = cargarCacheLocal();
+            if (!cache.isEmpty()) System.out.println("✓ " + cache.size() + " registros del caché");
+            else System.out.println("❌ Sin caché disponible.");
+            return cache;
+        }
+        return new ArrayList<>();
+    }
+
+    private static String buildUrl(String base, String fecha) {
+        if (fecha == null || fecha.isEmpty()) return base;
+        String[] p = fecha.split("-");
+        // Los sitios usan formato DD-MM-YYYY en el parámetro ?fecha=
+        return base + (base.contains("?") ? "&" : "?") + "fecha=" + p[2] + "-" + p[1] + "-" + p[0];
     }
 
     // ─── Iteración de todos los productos ────────────────────────────────────
 
-    private static List<Map<String, String>> scrapearTodosLosProductos(Document docPrincipal) {
+    private static List<Map<String, String>> scrapearTodosLosProductos(Document docPrincipal, String fecha) {
         List<Map<String, String>> todos = new ArrayList<>();
         List<Map<String, String>> urlsProductos = extraerOpcionesProducto(docPrincipal);
 
@@ -61,11 +76,11 @@ public class AgrePreciosScraperDAO {
         System.out.println("   → " + urlsProductos.size() + " productos detectados en agroprecios.com");
 
         for (Map<String, String> opcion : urlsProductos) {
-            String url    = opcion.get("url");
+            String url    = buildUrl(opcion.get("url"), fecha);
             String nombre = opcion.get("nombre");
             try {
                 pausa(DELAY_ENTRE_PRODUCTOS);
-                Document docProducto = url.equals(BASE_URL) ? docPrincipal : conectar(url);
+                Document docProducto = opcion.get("url").equals(BASE_URL) ? docPrincipal : conectar(url);
                 String nombreReal = extraerNombreProducto(docProducto, nombre);
                 String variedad   = extraerVariedad(docProducto, nombreReal);
 

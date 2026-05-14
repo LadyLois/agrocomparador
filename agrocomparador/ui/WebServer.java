@@ -36,14 +36,22 @@ public class WebServer {
             OutputStream salida = cliente.getOutputStream();
 
             if (rutaBase.equals("/vaciar")) {
-                ProductoService.vaciarDatosScraper();
+                String fechaVaciar = params.get("fecha");
+                if (fechaVaciar != null && !fechaVaciar.trim().isEmpty()) {
+                    fechaVaciar = URLDecoder.decode(fechaVaciar, "UTF-8").trim();
+                    ProductoService.vaciarDatosScraperPorFecha(fechaVaciar);
+                } else {
+                    ProductoService.vaciarDatosScraper();
+                }
                 enviarRedireccion(salida, "/?accion=vaciado");
                 cliente.close();
                 return;
             }
 
             if (rutaBase.equals("/cargar")) {
-                ProductoService.forzarCargaDatos();
+                String fechaCarga = params.get("fecha");
+                if (fechaCarga != null) fechaCarga = URLDecoder.decode(fechaCarga, "UTF-8").trim();
+                ProductoService.forzarCargaDatos(fechaCarga != null && !fechaCarga.isEmpty() ? fechaCarga : null);
                 enviarRedireccion(salida, "/?accion=cargando");
                 cliente.close();
                 return;
@@ -51,17 +59,21 @@ public class WebServer {
 
             String filtroProducto = params.get("producto");
             if (filtroProducto != null) filtroProducto = URLDecoder.decode(filtroProducto, "UTF-8");
-            String filtroFecha = params.get("fecha");
-            if (filtroFecha != null) filtroFecha = URLDecoder.decode(filtroFecha, "UTF-8");
+            String filtroFechaDesde = params.get("fechaDesde");
+            if (filtroFechaDesde != null) filtroFechaDesde = URLDecoder.decode(filtroFechaDesde, "UTF-8");
+            String filtroFechaHasta = params.get("fechaHasta");
+            if (filtroFechaHasta != null) filtroFechaHasta = URLDecoder.decode(filtroFechaHasta, "UTF-8");
             String accion = params.get("accion");
 
             List<Map<String, Object>> productos = null;
             String error = null;
 
             try {
+                String desde = filtroFechaDesde != null ? filtroFechaDesde.trim() : "";
+                String hasta  = filtroFechaHasta != null ? filtroFechaHasta.trim() : "";
                 List<Map<String, Object>> base;
-                if (filtroFecha != null && !filtroFecha.trim().isEmpty()) {
-                    base = ProductoService.obtenerProductosPorFechaCombinados(filtroFecha);
+                if (!desde.isEmpty() || !hasta.isEmpty()) {
+                    base = ProductoService.obtenerProductosPorRangoCombinados(desde, hasta);
                 } else {
                     base = ProductoService.obtenerTodosLosProductosCombinados();
                 }
@@ -78,7 +90,7 @@ public class WebServer {
                 System.err.println("❌ Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
 
-            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto, accion, filtroFecha);
+            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto, accion, filtroFechaDesde, filtroFechaHasta);
             String respuestaHTTP = HTMLBuilder.construirRespuestaHTTP(htmlContent);
 
             salida.write(respuestaHTTP.getBytes("UTF-8"));
@@ -108,6 +120,17 @@ public class WebServer {
         salida.flush();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

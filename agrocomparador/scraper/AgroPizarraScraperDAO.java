@@ -19,11 +19,17 @@ public class AgroPizarraScraperDAO {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     public static List<Map<String, String>> obtenerProductosDesdeScraper() {
+        return obtenerProductosDesdeScraper(null);
+    }
+
+    public static List<Map<String, String>> obtenerProductosDesdeScraper(String fecha) {
+        // Siempre cargar la lista de productos desde BASE_URL (sin fecha)
+        // Para fechas históricas, cada producto usa el endpoint de API con base64
         for (int intento = 1; intento <= MAX_REINTENTOS; intento++) {
             try {
                 System.out.println("🔄 Intento " + intento + "/" + MAX_REINTENTOS + " – agropizarra.com");
                 Document docPrincipal = conectar(BASE_URL);
-                List<Map<String, String>> todos = scrapearTodosLosProductos(docPrincipal);
+                List<Map<String, String>> todos = scrapearTodosLosProductos(docPrincipal, fecha);
 
                 if (!todos.isEmpty()) {
                     System.out.println("✓ AgroPizarra.com: " + todos.size() + " registros en total");
@@ -39,9 +45,35 @@ public class AgroPizarraScraperDAO {
         return new ArrayList<>();
     }
 
+    private static String buildUrl(String base, String fecha) {
+        if (fecha == null || fecha.isEmpty()) return base;
+        // Si la URL contiene un ID de producto (ej: /24-berenjena-larga/), usar el endpoint AJAX con base64
+        // que es el mecanismo real que usa el sitio para fechas históricas
+        String id = extractProductId(base);
+        if (id != null) {
+            String param = id + "|" + fecha + "|1|1|1";
+            String encoded = java.util.Base64.getEncoder().encodeToString(param.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return HOST + "/pizarra-producto-ver.php?var=" + encoded;
+        }
+        // Fallback para URLs sin ID de producto (no debería llegar aquí en producción)
+        String[] p = fecha.split("-");
+        return base + (base.contains("?") ? "&" : "?") + "fecha=" + p[2] + "-" + p[1] + "-" + p[0];
+    }
+
+    // Extrae el ID numérico del producto desde la URL slug, ej: ".../24-berenjena-larga/" → "24"
+    private static String extractProductId(String url) {
+        int idx = url.indexOf("/pizarra-producto/");
+        if (idx < 0) return null;
+        String slug = url.substring(idx + "/pizarra-producto/".length());
+        int dashIdx = slug.indexOf('-');
+        if (dashIdx <= 0) return null;
+        String id = slug.substring(0, dashIdx);
+        return id.matches("\\d+") ? id : null;
+    }
+
     // ─── Iteración de todos los productos ────────────────────────────────────
 
-    private static List<Map<String, String>> scrapearTodosLosProductos(Document docPrincipal) {
+    private static List<Map<String, String>> scrapearTodosLosProductos(Document docPrincipal, String fecha) {
         List<Map<String, String>> todos = new ArrayList<>();
         List<Map<String, String>> urlsProductos = extraerOpcionesProducto(docPrincipal);
 
@@ -54,11 +86,15 @@ public class AgroPizarraScraperDAO {
         System.out.println("   → " + urlsProductos.size() + " productos detectados en agropizarra.com");
 
         for (Map<String, String> opcion : urlsProductos) {
-            String url    = opcion.get("url");
+            String url    = buildUrl(opcion.get("url"), fecha);
             String nombre = opcion.get("nombre");
             try {
                 pausa(DELAY_ENTRE_PRODUCTOS);
-                Document docProducto = url.equals(BASE_URL) ? docPrincipal : conectar(url);
+                // Para fechas históricas siempre conectar al endpoint específico;
+                // para hoy, reutilizar docPrincipal si el producto coincide con la URL base
+                boolean esUrlBase = opcion.get("url").equals(BASE_URL);
+                boolean esFechaHistorica = (fecha != null && !fecha.isEmpty());
+                Document docProducto = (esUrlBase && !esFechaHistorica) ? docPrincipal : conectar(url);
                 String nombreReal = extraerNombreProducto(docProducto, nombre);
                 String variedad   = extraerVariedad(docProducto, nombreReal);
 
@@ -172,9 +208,15 @@ public class AgroPizarraScraperDAO {
     private static Map<String, String> procesarItemLista(Element item, String nombre, String variedad, String fechaHoy) {
         Elements children = item.select("span, div, strong, em");
         if (children.size() >= 2) {
-            String subasta = children.get(0).text().trim();
+            // La primera celda puede ser un logo vacío; buscar el primero con texto no numérico
+            int subastaIdx = 0;
+            for (int i = 0; i < Math.min(children.size() - 1, 3); i++) {
+                String t = children.get(i).text().trim();
+                if (!t.isEmpty() && !t.matches("\\d+")) { subastaIdx = i; break; }
+            }
+            String subasta = children.get(subastaIdx).text().trim();
             if (esEncabezado(subasta)) return null;
-            double precio = extraerPrimerEnteroValido(children, 1);
+            double precio = extraerPrimerEnteroValido(children, subastaIdx + 1);
             if (precio <= 0) return null;
             return crearRegistro(nombre, variedad, subasta, precio, fechaHoy);
         }
@@ -210,9 +252,15 @@ public class AgroPizarraScraperDAO {
             try {
                 Elements celdas = fila.select("td");
                 if (celdas.size() < 2) continue;
-                String subasta = celdas.get(0).text().trim();
+                // La primera celda puede ser un logo vacío; buscar la primera con texto no numérico
+                int nombreIdx = 0;
+                for (int i = 0; i < Math.min(celdas.size() - 1, 3); i++) {
+                    String t = celdas.get(i).text().trim();
+                    if (!t.isEmpty() && !t.matches("\\d+")) { nombreIdx = i; break; }
+                }
+                String subasta = celdas.get(nombreIdx).text().trim();
                 if (esEncabezado(subasta)) continue;
-                double precio = extraerPrimerEnteroValido(celdas, 1);
+                double precio = extraerPrimerEnteroValido(celdas, nombreIdx + 1);
                 if (precio <= 0) continue;
                 productos.add(crearRegistro(nombre, variedad, subasta, precio, fechaHoy));
             } catch (Exception ignored) {}
@@ -270,6 +318,18 @@ public class AgroPizarraScraperDAO {
     // ─── Utilidades ──────────────────────────────────────────────────────────
 
     private static Document conectar(String url) throws Exception {
+        // El endpoint AJAX requiere cabeceras adicionales para no ser rechazado por el servidor
+        if (url.contains("pizarra-producto-ver.php")) {
+            return Jsoup.connect(url)
+                    .userAgent(USER_AGENT)
+                    .timeout(TIMEOUT)
+                    .followRedirects(true)
+                    .ignoreHttpErrors(false)
+                    .referrer(HOST + "/es/pizarra-producto/")
+                    .header("X-Requested-With", "XMLHttpRequest")
+                    .header("Accept", "text/html, */*; q=0.01")
+                    .get();
+        }
         return Jsoup.connect(url)
                 .userAgent(USER_AGENT)
                 .timeout(TIMEOUT)

@@ -8,8 +8,13 @@ public class ScraperScheduler implements Runnable {
 
     private static ScraperScheduler instancia;
     private static final int INTERVALO_MINUTOS = 60;
+    private static final Set<String> fechasEnProceso = Collections.synchronizedSet(new HashSet<>());
     private volatile boolean activo = true;
     private Thread thread;
+
+    public static Set<String> getFechasEnProceso() {
+        return Collections.unmodifiableSet(fechasEnProceso);
+    }
 
     private ScraperScheduler() {}
 
@@ -36,16 +41,28 @@ public class ScraperScheduler implements Runnable {
     }
 
     public void forzarActualizacionAsincrona() {
+        forzarActualizacionAsincrona(null);
+    }
+
+    public void forzarActualizacionAsincrona(String fecha) {
+        String fechaRef = (fecha != null && !fecha.isEmpty()) ? fecha : java.time.LocalDate.now().toString();
+        if (!fechasEnProceso.add(fechaRef)) {
+            System.out.println("⏳ Ya hay una carga en proceso para " + fechaRef + ", ignorando solicitud duplicada");
+            return;
+        }
         Thread t = new Thread(() -> {
             try {
-                actualizarDatos();
+                actualizarDatos(fecha);
             } catch (Exception e) {
                 System.err.println("❌ Error en carga forzada: " + e.getMessage());
+            } finally {
+                fechasEnProceso.remove(fechaRef);
+                System.out.println("✅ Carga finalizada [" + fechaRef + "]");
             }
         }, "ScraperForzado");
         t.setDaemon(true);
         t.start();
-        System.out.println("🚀 Carga de datos iniciada en segundo plano");
+        System.out.println("🚀 Carga de datos iniciada en segundo plano [" + fechaRef + "]");
     }
 
     @Override
@@ -68,24 +85,30 @@ public class ScraperScheduler implements Runnable {
     }
 
     private void actualizarDatos() {
-        System.out.println("\n📥 Iniciando actualización de datos desde las fuentes...");
-        actualizarFuente("AgroPrecios.com", AgrePreciosScraperDAO.obtenerProductosDesdeScraper());
-        actualizarFuente("AgroPizarra.com", AgroPizarraScraperDAO.obtenerProductosDesdeScraper());
+        actualizarDatos(null);
     }
 
-    private void actualizarFuente(String nombre, List<Map<String, String>> productos) {
+    private void actualizarDatos(String fecha) {
+        String label = (fecha != null && !fecha.isEmpty()) ? " [" + fecha + "]" : "";
+        System.out.println("\n📥 Iniciando actualización de datos" + label + "...");
+        actualizarFuente("AgroPrecios.com", AgrePreciosScraperDAO.obtenerProductosDesdeScraper(fecha), fecha);
+        actualizarFuente("AgroPizarra.com", AgroPizarraScraperDAO.obtenerProductosDesdeScraper(fecha), fecha);
+    }
+
+    private void actualizarFuente(String nombre, List<Map<String, String>> productos, String fecha) {
         if (productos.isEmpty()) {
             System.out.println("⚠️ No hay datos de " + nombre);
             return;
         }
-        guardarEnBaseDatos(productos);
+        guardarEnBaseDatos(productos, fecha);
         System.out.println("✓ " + nombre + ": " + productos.size() + " registros procesados");
     }
 
-    private void guardarEnBaseDatos(List<Map<String, String>> productos) {
+    private void guardarEnBaseDatos(List<Map<String, String>> productos, String fecha) {
         if (productos.isEmpty()) return;
 
-        String origen = productos.get(0).getOrDefault("origen", "SCRAPER");
+        String origen   = productos.get(0).getOrDefault("origen", "SCRAPER");
+        String fechaRef = (fecha != null && !fecha.isEmpty()) ? fecha : java.time.LocalDate.now().toString();
 
         Connection conn = null;
         try {
@@ -93,8 +116,8 @@ public class ScraperScheduler implements Runnable {
             conn.setAutoCommit(false);
 
             try {
-                if (tieneDatosDeHoy(conn, origen)) {
-                    System.out.println("   ℹ️ Ya existen datos de " + origen + " para hoy, omitiendo inserción");
+                if (tieneDatosParaFecha(conn, origen, fechaRef)) {
+                    System.out.println("   ℹ️ Ya existen datos de " + origen + " para " + fechaRef + ", omitiendo inserción");
                     conn.setAutoCommit(true);
                     return;
                 }
@@ -112,13 +135,13 @@ public class ScraperScheduler implements Runnable {
 
                     int productoId = obtenerOCrearProducto(conn, nombre, variedad);
                     int fuenteId   = obtenerOCrearFuente(conn, fuente);
-                    insertarPrecio(conn, productoId, fuenteId, precio, origen);
+                    insertarPrecio(conn, productoId, fuenteId, precio, origen, fecha);
                     insertados++;
                 }
 
                 conn.commit();
                 System.out.println("   ✓ " + insertados + " registros de " + origen +
-                    " guardados en BD (" + java.time.LocalDate.now() + ")");
+                    " guardados en BD (" + fechaRef + ")");
 
             } catch (SQLException e) {
                 conn.rollback();
@@ -135,10 +158,11 @@ public class ScraperScheduler implements Runnable {
         }
     }
 
-    private boolean tieneDatosDeHoy(Connection conn, String origen) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM precios WHERE origen = ? AND DATE(fecha) = CURDATE()";
+    private boolean tieneDatosParaFecha(Connection conn, String origen, String fecha) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM precios WHERE origen = ? AND DATE(fecha) = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, origen);
+            stmt.setString(2, fecha);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next() && rs.getInt(1) > 0;
             }
@@ -193,14 +217,21 @@ public class ScraperScheduler implements Runnable {
     }
 
     private void insertarPrecio(Connection conn, int productoId, int fuenteId,
-                                double precio, String origen) throws SQLException {
-        String sql = "INSERT INTO precios (producto_id, fuente_id, precio, fecha, origen) " +
-                    "VALUES (?, ?, ?, NOW(), ?)";
+                                double precio, String origen, String fecha) throws SQLException {
+        boolean usarFecha = (fecha != null && !fecha.isEmpty());
+        String sql = usarFecha
+            ? "INSERT INTO precios (producto_id, fuente_id, precio, fecha, origen) VALUES (?, ?, ?, ?, ?)"
+            : "INSERT INTO precios (producto_id, fuente_id, precio, fecha, origen) VALUES (?, ?, ?, NOW(), ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, productoId);
             stmt.setInt(2, fuenteId);
             stmt.setDouble(3, precio);
-            stmt.setString(4, origen);
+            if (usarFecha) {
+                stmt.setString(4, fecha);
+                stmt.setString(5, origen);
+            } else {
+                stmt.setString(4, origen);
+            }
             stmt.executeUpdate();
         }
     }

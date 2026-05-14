@@ -112,13 +112,12 @@ Write-Host ""
 Write-Host "Compilando..." -ForegroundColor $Yellow
 
 # Compilar
-javac -cp "$JsoupJar;$DriverJar" -d . `
-    agrocomparador.java `
-    "agrocomparador/data/*.java" `
-    "agrocomparador/business/*.java" `
-    "agrocomparador/ui/*.java" `
-    "agrocomparador/scraper/*.java" `
-    2>&1
+$sourceFiles = @("agrocomparador.java") + (Get-ChildItem `
+    agrocomparador\data\*.java, `
+    agrocomparador\business\*.java, `
+    agrocomparador\ui\*.java, `
+    agrocomparador\scraper\*.java | Select-Object -ExpandProperty FullName)
+javac -cp "$JsoupJar;$DriverJar" $sourceFiles 2>&1
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Error en la compilación" -ForegroundColor $Red
