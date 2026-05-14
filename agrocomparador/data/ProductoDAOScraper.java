@@ -5,7 +5,7 @@ import java.util.*;
 
 public class ProductoDAOScraper {
 
-    // Datos scrapeados: los del día más reciente disponible por origen
+    // Datos scrapeados: todos los días acumulados, ordenados del más reciente al más antiguo
     public static List<Map<String, String>> obtenerProductosDelScraper() {
         List<Map<String, String>> productos = new ArrayList<>();
         Connection conn = null;
@@ -16,11 +16,8 @@ public class ProductoDAOScraper {
                         "JOIN productos p ON pr.producto_id = p.id " +
                         "JOIN fuentes f ON pr.fuente_id = f.id " +
                         "WHERE pr.origen IN ('AGROPRECIOS','AGROPIZARRA') " +
-                        "  AND DATE(pr.fecha) = (" +
-                        "    SELECT MAX(DATE(pr2.fecha)) FROM precios pr2 WHERE pr2.origen = pr.origen" +
-                        "  ) " +
-                        "ORDER BY p.nombre, pr.precio " +
-                        "LIMIT 1000";
+                        "ORDER BY pr.fecha DESC, p.nombre, pr.precio " +
+                        "LIMIT 5000";
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
                 while (rs.next()) {

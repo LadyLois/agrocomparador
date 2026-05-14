@@ -1,4 +1,4 @@
-# Cache AgroPrecios – 2026-05-13 19:45:10
+# Cache AgroPrecios – 2026-05-13 20:18:07
 Tomate	0.98	Agrupados	Daniela Verde
 Tomate	1.03	Cehorpa	Daniela
 Tomate	0.7	Agroponiente	Daniela
