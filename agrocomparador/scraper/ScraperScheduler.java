@@ -156,7 +156,7 @@ public class ScraperScheduler implements Runnable {
                 DatabaseConnection.closeConnection(conn);
             }
         }
-    }
+    }   
 
     private void crearTablaSiNoExiste(Connection conn) throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS precios_scraper (" +

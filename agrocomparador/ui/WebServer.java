@@ -1,6 +1,8 @@
 package agrocomparador.ui;
 
 import agrocomparador.business.ProductoService;
+import agrocomparador.data.MinisterioExcelDAO;
+import agrocomparador.data.InformeSemanalDAO;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -53,17 +55,108 @@ public class WebServer {
             // Parsear la solicitud (ej: "GET /?producto=Tomate HTTP/1.1")
             String[] partes = primeraLinea.split(" ");
             String ruta = partes.length > 1 ? partes[1] : "/";
+
+            if (ruta.equals("/historico")) {
+
+                String html =
+                    HTMLBuilder
+                    .construirPaginaHistorico();
+
+                String respuesta =
+                    HTMLBuilder
+                    .construirRespuestaHTTP(html);
+
+                OutputStream salida =
+                    cliente.getOutputStream();
+
+                salida.write(
+                    respuesta.getBytes("UTF-8")
+                );
+
+                salida.flush();
+                salida.close();
+                cliente.close();
+
+                return;
+            }
+
+            if (ruta.equals("/semanal")) {
+
+                String html =
+                    HTMLBuilder
+                    .construirPaginaSemanal();
+
+                String respuesta =
+                    HTMLBuilder
+                    .construirRespuestaHTTP(html);
+
+                OutputStream salida =
+                    cliente.getOutputStream();
+
+                salida.write(
+                    respuesta.getBytes("UTF-8")
+                );
+
+                salida.flush();
+                salida.close();
+                cliente.close();
+
+                return;
+            }
+
+            if (ruta.equals("/comparativa")) {
+
+                String html =
+                    HTMLBuilder
+                    .construirPaginaComparativa();
+
+                String respuesta =
+                    HTMLBuilder
+                    .construirRespuestaHTTP(html);
+
+                OutputStream salida =
+                    cliente.getOutputStream();
+
+                salida.write(
+                    respuesta.getBytes("UTF-8")
+                );
+
+                salida.flush();
+                salida.close();
+                cliente.close();
+
+                return;
+            }
             
             // Extraer parámetro de búsqueda
             String filtroProducto = null;
+            String historicoProducto = null;
+            String semanalProducto = null;
             if (ruta.contains("?")) {
                 String[] rutaParts = ruta.split("\\?");
                 String queryString = rutaParts[1];
                 
                 if (queryString.startsWith("producto=")) {
+
                     filtroProducto = queryString.substring("producto=".length());
-                    // Decodificar URL
                     filtroProducto = URLDecoder.decode(filtroProducto, "UTF-8");
+
+                } else if (queryString.startsWith("historico=")) {
+
+                    historicoProducto = queryString.substring("historico=".length());
+                    historicoProducto = URLDecoder.decode(historicoProducto, "UTF-8");
+                }else if (queryString.startsWith("semanal=")) {
+
+                    semanalProducto =
+                        queryString.substring(
+                            "semanal=".length()
+                        );
+
+                    semanalProducto =
+                        URLDecoder.decode(
+                            semanalProducto,
+                            "UTF-8"
+                        );
                 }
             }
             
@@ -84,7 +177,21 @@ public class WebServer {
             }
             
             // Construir respuesta HTML
-            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto);
+            String htmlContent;
+
+            if (historicoProducto != null) {
+
+                List<Map<String, Object>> datosHistorico = MinisterioExcelDAO.obtenerHistoricoProducto(historicoProducto);
+
+                htmlContent = HTMLBuilder.construirHistoricoHTML(datosHistorico);
+
+            }else if (semanalProducto != null) {
+                List<Map<String, Object>> datosSemanales = InformeSemanalDAO.obtenerHistoricoSemanal(semanalProducto);
+                htmlContent =HTMLBuilder.construirSemanalHTML(datosSemanales);
+            }else {
+                htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto);
+            }
+            
             String respuestaHTTP = HTMLBuilder.construirRespuestaHTTP(htmlContent);
             
             // Enviar respuesta

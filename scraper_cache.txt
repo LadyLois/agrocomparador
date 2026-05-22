@@ -1,0 +1,10 @@
+# Cache de Scraper - 2026-05-20 19:11:44
+Tomate Pera	20052026	AgroPrecios.com	
+SUBASTAS	1	2	
+Agrop. Adra	65	-	
+Agroejido	86	83	
+Cehorpa	73	69	
+Agroponiente	84	78	
+La Union	78	-	
+Costa de Almeria	16	-	
+Agrupados	78	71	
