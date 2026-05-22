@@ -156,7 +156,7 @@ public class ScraperScheduler implements Runnable {
                 DatabaseConnection.closeConnection(conn);
             }
         }
-    }
+    }   
 
     private boolean tieneDatosParaFecha(Connection conn, String origen, String fecha) throws SQLException {
         String sql = "SELECT COUNT(*) FROM precios WHERE origen = ? AND DATE(fecha) = ?";

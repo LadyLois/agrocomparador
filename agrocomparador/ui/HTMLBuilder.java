@@ -6,6 +6,7 @@ import java.time.DayOfWeek;
 import java.util.*;
 import java.util.stream.Collectors;
 
+
 public class HTMLBuilder {
 
     // ─── Alias de nombres de productos ───────────────────────────────────────
@@ -873,4 +874,5 @@ public class HTMLBuilder {
             return "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\nError: " + e.getMessage();
         }
     }
+
 }

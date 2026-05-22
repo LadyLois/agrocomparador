@@ -1,7 +1,6 @@
 package agrocomparador.business;
 
 import agrocomparador.data.ProductoDAO;
-import agrocomparador.data.ProductoDAOScraper;
 import agrocomparador.scraper.AgrePreciosScraperDAO;
 import agrocomparador.scraper.ScraperScheduler;
 import java.text.Normalizer;
@@ -14,7 +13,7 @@ import java.util.stream.Collectors;
  * 
  * Integra 2 fuentes:
  * 1. Base de datos local (ProductoDAO)
- * 2. Web Scraping de agroprecios.com (ProductoDAOScraper)
+ * 2. Web Scraping de agroprecios.com (AgrePreciosScraperDAO)
  */
 public class ProductoService {
     
@@ -181,7 +180,7 @@ public class ProductoService {
      * @return Mapa con estadísticas
      */
     public static Map<String, String> obtenerEstadisticasScraper() {
-        return ProductoDAOScraper.obtenerEstadisticasScraper();
+        return new HashMap<>();//cambio para iniciar servidor
     }
     
     /**
