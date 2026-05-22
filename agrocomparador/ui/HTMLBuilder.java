@@ -1,11 +1,12 @@
 package agrocomparador.ui;
 
 import agrocomparador.business.ProductoService;
+import agrocomparador.data.InformeSemanalDAO;
+import agrocomparador.data.MinisterioExcelDAO;
 import java.time.LocalDate;
 import java.time.DayOfWeek;
 import java.util.*;
 import java.util.stream.Collectors;
-
 
 public class HTMLBuilder {
 
@@ -37,7 +38,7 @@ public class HTMLBuilder {
     // ─── Punto de entrada principal ──────────────────────────────────────────
 
     public static String construirRespuestaHTML(List<Map<String, Object>> productos,
-            String error, String filtroAplicado, String accion, String filtroFechaDesde, String filtroFechaHasta) {
+            String error, String filtroAplicado, String accion, String filtroFechaDesde, String filtroFechaHasta, String filtroCategoria) {
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html>\n<html lang='es'>\n<head>\n");
         html.append("<meta charset='UTF-8'>\n");
@@ -55,7 +56,7 @@ public class HTMLBuilder {
             html.append(construirBanner(accion));
 
         html.append(construirStatsGrid());
-        html.append(construirToolbar(filtroAplicado, filtroFechaDesde, filtroFechaHasta));
+        html.append(construirToolbar(filtroAplicado, filtroFechaDesde, filtroFechaHasta, filtroCategoria));
 
         if (error != null && !error.isEmpty())
             html.append("<div class='alert alert-error'><span>⚠️</span> ").append(escapeHTML(error)).append("</div>\n");
@@ -63,6 +64,7 @@ public class HTMLBuilder {
         if (productos != null && !productos.isEmpty()) {
             html.append("<p class='results-info'>").append(productos.size()).append(" registros encontrados</p>\n");
             html.append(construirGrafica(productos));
+            html.append(construirGraficaExcel(productos));
             html.append(construirTabla(productos));
         } else {
             html.append("<div class='empty-state'>");
@@ -82,13 +84,18 @@ public class HTMLBuilder {
     }
 
     public static String construirRespuestaHTML(List<Map<String, Object>> productos,
+            String error, String filtroAplicado, String accion, String filtroFechaDesde, String filtroFechaHasta) {
+        return construirRespuestaHTML(productos, error, filtroAplicado, accion, filtroFechaDesde, filtroFechaHasta, null);
+    }
+
+    public static String construirRespuestaHTML(List<Map<String, Object>> productos,
             String error, String filtroAplicado, String accion) {
-        return construirRespuestaHTML(productos, error, filtroAplicado, accion, null, null);
+        return construirRespuestaHTML(productos, error, filtroAplicado, accion, null, null, null);
     }
 
     public static String construirRespuestaHTML(List<Map<String, Object>> productos,
             String error, String filtroAplicado) {
-        return construirRespuestaHTML(productos, error, filtroAplicado, null, null, null);
+        return construirRespuestaHTML(productos, error, filtroAplicado, null, null, null, null);
     }
 
     // ─── CSS ─────────────────────────────────────────────────────────────────
@@ -294,7 +301,7 @@ public class HTMLBuilder {
 
     // ─── Toolbar (búsqueda + acciones) ────────────────────────────────────────
 
-    private static String construirToolbar(String filtro, String filtroFechaDesde, String filtroFechaHasta) {
+    private static String construirToolbar(String filtro, String filtroFechaDesde, String filtroFechaHasta, String categoria) {
         List<String> fechas = new ArrayList<>();
         try { fechas = ProductoService.obtenerFechasDisponibles(); } catch (Exception ignored) {}
 
@@ -331,13 +338,36 @@ public class HTMLBuilder {
             tb.append("    </div>\n");
         }
 
+        // Categoría activa como campo oculto actualizado por JS
+        String catActiva = (categoria != null && !categoria.isEmpty()) ? categoria : "todos";
+        tb.append("    <input type='hidden' name='categoria' id='cat-hidden' value='").append(escapeHTML(catActiva)).append("'>\n");
         tb.append("    <button type='submit' class='btn btn-primary'>Buscar</button>\n");
         boolean hayFiltro = (filtro != null && !filtro.isEmpty())
                          || (filtroFechaDesde != null && !filtroFechaDesde.isEmpty())
-                         || (filtroFechaHasta  != null && !filtroFechaHasta.isEmpty());
+                         || (filtroFechaHasta  != null && !filtroFechaHasta.isEmpty())
+                         || (categoria != null && !categoria.isEmpty() && !categoria.equals("todos"));
         if (hayFiltro)
             tb.append("    <a href='/' class='btn btn-ghost'>✕ Limpiar</a>\n");
         tb.append("  </form>\n");
+
+        // Chips de categoría
+        tb.append("  <div class='sep'></div>\n");
+        tb.append("  <div style='display:flex;gap:5px;align-items:center'>\n");
+        for (String[] chip : new String[][]{
+                {"todos","Todos",""},
+                {"hortalizas","🥦 Hortalizas",""},
+                {"frutas","🍊 Frutas",""},
+                {"cereales","🌾 Cereales/Aceites",""}}) {
+            boolean activo = chip[0].equals(catActiva);
+            String estilo = activo
+                ? "background:#2E7D32;color:white;border-color:#2E7D32;"
+                : "background:white;color:#5A6779;border-color:#D0D8E4;";
+            tb.append("  <button onclick=\"document.getElementById('cat-hidden').value='")
+              .append(chip[0]).append("';document.querySelector('.toolbar form').submit();\" ")
+              .append("style='padding:5px 12px;border:1.5px solid;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;")
+              .append(estilo).append("'>").append(chip[1]).append("</button>\n");
+        }
+        tb.append("  </div>\n");
         tb.append("  <div class='sep'></div>\n");
         tb.append("  <a href='#' class='btn btn-blue' onclick=\"document.getElementById('modal-carga').style.display='flex';return false;\">⬇️ Cargar datos</a>\n");
         tb.append("  <a href='#' class='btn btn-danger' onclick=\"document.getElementById('modal-vaciar').style.display='flex';return false;\">🗑️ Vaciar</a>\n");
@@ -352,6 +382,243 @@ public class HTMLBuilder {
             if (d.length == 3) return d[2] + "/" + d[1] + "/" + d[0];
         } catch (Exception ignored) {}
         return fecha;
+    }
+
+    // ─── Gráfica Precios Ministerio (Excel) ───────────────────────────────────
+
+    public static String clasificarCategoria(String nombre) {
+        String n = nombre.toLowerCase()
+            .replace("á","a").replace("é","e").replace("í","i")
+            .replace("ó","o").replace("ú","u").replace("ñ","n");
+        if (n.contains("naranja") || n.contains("limon") || n.contains("manzana") ||
+            n.contains("pera") && !n.contains("perejil") || n.contains("uva") || n.contains("fresa") ||
+            n.contains("melocoton") || n.contains("sandia") || n.contains("melon") && !n.contains("melocoton") ||
+            n.contains("cereza") || n.contains("kiwi") || n.contains("platano") ||
+            n.contains("mango") || n.contains("aguacate") || n.contains("mandarina") ||
+            n.contains("clementina") || n.contains("nispero") || n.contains("albaricoque") ||
+            n.contains("ciruela") || n.contains("higo") || n.contains("granada") ||
+            n.contains("frambuesa") || n.contains("arandano") || n.contains("mora"))
+            return "frutas";
+        if (n.contains("trigo") || n.contains("cebada") || n.contains("maiz") ||
+            n.contains("centeno") || n.contains("avena") || n.contains("arroz") ||
+            n.contains("colza") || n.contains("girasol") || n.contains("soja") ||
+            n.contains("alfalfa") || n.contains("garbanzo") || n.contains("lenteja") ||
+            n.contains("guisante") || n.contains("haba seca") || n.contains("torta") ||
+            n.contains("aceite") || n.contains("orujo") || n.contains("oliva") ||
+            n.contains("vino") || n.contains("pipa"))
+            return "cereales";
+        return "hortalizas";
+    }
+
+    private static String normalizarMatch(String s) {
+        return s.toLowerCase()
+            .replace("á","a").replace("é","e").replace("í","i")
+            .replace("ó","o").replace("ú","u").replace("ñ","n")
+            .replaceAll("\\s*\\([^)]+\\)\\*?$", "") // strip "(€/100 kg)*" etc.
+            .trim();
+    }
+
+    // Meses completos en el orden de MinisterioExcelDAO
+    private static final String[] MESES_KEY  = {"Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                                                  "Julio","Agosto","Septiem.","Octubre","Noviem.","Diciem."};
+    private static final String[] MESES_FULL = {"Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                                                  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"};
+
+    private static String construirGraficaExcel(List<Map<String, Object>> productosScraper) {
+        List<Map<String, Object>> datos;
+        try {
+            datos = InformeSemanalDAO.obtenerComparativaProductos();
+        } catch (Exception e) {
+            return "";
+        }
+        if (datos == null || datos.isEmpty()) return "";
+
+        // Nombres normalizados del scraper (únicos)
+        Set<String> nombresScraper = new LinkedHashSet<>();
+        if (productosScraper != null) {
+            for (Map<String, Object> p : productosScraper) {
+                String n = normalizarMatch(p.getOrDefault("nombre", "").toString());
+                if (!n.isEmpty()) nombresScraper.add(n);
+            }
+        }
+
+        // ── Gráfica de barras: semanal promedio ──
+        if (!nombresScraper.isEmpty()) {
+            datos = datos.stream()
+                .filter(d -> {
+                    String prod = normalizarMatch(d.getOrDefault("producto", "").toString());
+                    return nombresScraper.stream().anyMatch(n -> prod.contains(n) || n.contains(prod));
+                })
+                .collect(Collectors.toList());
+        }
+        if (datos.isEmpty()) return "";
+
+        String[] palette   = {"#2d6a4f","#40916c","#52b788","#74c69d","#95d5b2","#b7e4c7","#d8f3dc"};
+        String[] linePal   = {"#2d6a4f","#e63946","#457b9d","#f4a261","#8338ec","#06d6a0","#fb8500"};
+
+        StringBuilder barLabels = new StringBuilder("[");
+        StringBuilder barValues = new StringBuilder("[");
+        StringBuilder barColors = new StringBuilder("[");
+        for (int i = 0; i < datos.size(); i++) {
+            Map<String, Object> d = datos.get(i);
+            String pCorto = escapeJS(d.getOrDefault("producto","").toString()
+                .replaceAll("\\s*\\([^)]+\\)\\*?$","").trim());
+            double kg = ((Number)d.getOrDefault("promedio",0.0)).doubleValue() / 100.0;
+            if (i > 0) { barLabels.append(","); barValues.append(","); barColors.append(","); }
+            barLabels.append("'").append(pCorto).append("'");
+            barValues.append(String.format(Locale.US,"%.3f",kg));
+            barColors.append("'").append(palette[i % palette.length]).append("'");
+        }
+        barLabels.append("]"); barValues.append("]"); barColors.append("]");
+
+        // ── Gráfica de evolución mensual: MinisterioExcelDAO ──
+        // Estructura JS: evoData[anio][productoLabel] = [p_enero, p_feb, ..., p_dic]
+        Map<String, Map<Integer, double[]>> evoDataMap = new LinkedHashMap<>(); // label -> anio -> precios[12]
+        TreeSet<Integer> aniosSet = new TreeSet<>();
+        List<String> evoLabels = new ArrayList<>(); // display labels de productos en evo
+
+        try {
+            List<String> ministProductos = MinisterioExcelDAO.obtenerProductos();
+            for (String mp : ministProductos) {
+                String mpNorm = normalizarMatch(mp);
+                boolean match = nombresScraper.stream().anyMatch(n -> mpNorm.contains(n) || n.contains(mpNorm));
+                if (!match) continue;
+                String label = mp.replaceAll("\\s*\\([^)]+\\)\\*?$","").trim()
+                                 .replace("PIMIENTO","Pimiento").replace("TOMATE","Tomate")
+                                 .replace("BERENJENA","Berenjena").replace("CALABACIN","Calabacín")
+                                 .replace("PEPINO","Pepino").replace("JUDIA","Judía");
+                // Usar el label del primer match (pode haber varios para el mismo normalizado)
+                if (evoDataMap.containsKey(label)) continue;
+                evoLabels.add(label);
+                Map<Integer, double[]> byAnio = new TreeMap<>();
+                for (Map<String,Object> row : MinisterioExcelDAO.obtenerHistoricoProducto(mp)) {
+                    int a = ((Number)row.get("anio")).intValue();
+                    String mes = row.get("mes").toString();
+                    double precio = ((Number)row.get("precio")).doubleValue();
+                    aniosSet.add(a);
+                    byAnio.computeIfAbsent(a, k -> new double[12]);
+                    for (int mi = 0; mi < MESES_KEY.length; mi++) {
+                        if (MESES_KEY[mi].equals(mes)) { byAnio.get(a)[mi] = precio; break; }
+                    }
+                }
+                evoDataMap.put(label, byAnio);
+            }
+        } catch (Exception ignored) {}
+
+        List<Integer> anios = new ArrayList<>(aniosSet);
+        int anioDefault = anios.isEmpty() ? 2025 : anios.get(anios.size() - 1);
+        boolean hayEvo = !evoDataMap.isEmpty();
+
+        // Serializar meses
+        StringBuilder mesesJs = new StringBuilder("[");
+        for (int i = 0; i < MESES_FULL.length; i++) {
+            if (i > 0) mesesJs.append(",");
+            mesesJs.append("'").append(MESES_FULL[i]).append("'");
+        }
+        mesesJs.append("]");
+
+        // Serializar evoData como objeto JS: {2024:{label:[...], ...}, 2025:{...}}
+        StringBuilder evoJs = new StringBuilder("{");
+        for (int ai = 0; ai < anios.size(); ai++) {
+            int a = anios.get(ai);
+            if (ai > 0) evoJs.append(",");
+            evoJs.append(a).append(":[");
+            for (int li = 0; li < evoLabels.size(); li++) {
+                String lbl = evoLabels.get(li);
+                double[] precios = evoDataMap.get(lbl) != null && evoDataMap.get(lbl).containsKey(a)
+                    ? evoDataMap.get(lbl).get(a) : new double[12];
+                String color = linePal[li % linePal.length];
+                if (li > 0) evoJs.append(",");
+                evoJs.append("{label:'").append(escapeJS(lbl))
+                     .append("',borderColor:'").append(color)
+                     .append("',backgroundColor:'").append(color)
+                     .append("',tension:0.3,fill:false,spanGaps:true,pointRadius:4,data:[");
+                for (int mi = 0; mi < 12; mi++) {
+                    if (mi > 0) evoJs.append(",");
+                    if (precios[mi] == 0) evoJs.append("null");
+                    else evoJs.append(String.format(Locale.US,"%.3f", precios[mi] / 100.0));
+                }
+                evoJs.append("]}");
+            }
+            evoJs.append("]");
+        }
+        evoJs.append("}");
+
+        // Selector de año (sólo visible en vista evolución)
+        StringBuilder anioOptions = new StringBuilder();
+        for (int a : anios) {
+            anioOptions.append("<option value='").append(a).append("'")
+                       .append(a == anioDefault ? " selected" : "").append(">").append(a).append("</option>");
+        }
+
+        return "<div class='card' style='margin-bottom:24px'>\n"
+            + "  <div style='padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px'>\n"
+            + "    <div style='display:flex;align-items:center;gap:10px'>\n"
+            + "      <span style='font-size:20px'>📊</span>\n"
+            + "      <div>\n"
+            + "        <h3 id='excel-chart-title' style='margin:0;font-size:15px;color:#1b4332'>Precio medio por producto (€/kg)</h3>\n"
+            + "        <span style='font-size:11px;color:#78909C'>Ministerio de Agricultura · Datos 2024–2026</span>\n"
+            + "      </div>\n"
+            + "    </div>\n"
+            + "    <div style='display:flex;gap:6px;align-items:center'>\n"
+            + "      <select id='anio-select' onchange='excelCambiarAnio()' style='display:none;padding:4px 10px;border:1.5px solid #D0D8E4;border-radius:8px;font-size:12px;font-weight:600;background:white;color:#1A2332;cursor:pointer'>"
+            + anioOptions + "</select>\n"
+            + "      <button id='btn-promedio' onclick='excelVista(\"promedio\")' style='padding:5px 14px;border:1.5px solid #2E7D32;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#2E7D32;color:white'>Promedio</button>\n"
+            + (hayEvo ? "      <button id='btn-evolucion' onclick='excelVista(\"evolucion\")' style='padding:5px 14px;border:1.5px solid #D0D8E4;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:white;color:#5A6779'>Evolución mensual</button>\n" : "")
+            + "    </div>\n"
+            + "  </div>\n"
+            + "  <div style='padding:4px 20px 20px;height:340px'>\n"
+            + "    <canvas id='excel-chart'></canvas>\n"
+            + "  </div>\n"
+            + "</div>\n"
+            + "<script>\n"
+            + "(function(){\n"
+            + "  var barLabels=" + barLabels + ";\n"
+            + "  var barValues=" + barValues + ";\n"
+            + "  var barColors=" + barColors + ";\n"
+            + "  var meses=" + mesesJs + ";\n"
+            + "  var evoData=" + evoJs + ";\n"
+            + "  var anioActual=" + anioDefault + ";\n"
+            + "  var chart = new Chart(document.getElementById('excel-chart'),{\n"
+            + "    type:'bar',\n"
+            + "    data:{labels:barLabels,datasets:[{label:'€/kg',data:barValues,backgroundColor:barColors,borderRadius:4}]},\n"
+            + "    options:{\n"
+            + "      responsive:true,maintainAspectRatio:false,\n"
+            + "      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' €'+parseFloat(c.raw).toFixed(2)+'/kg';}}}},\n"
+            + "      scales:{y:{beginAtZero:false,ticks:{callback:function(v){return '€'+v.toFixed(2);}}}}\n"
+            + "    }\n"
+            + "  });\n"
+            + "  window.excelVista = function(vista){\n"
+            + "    var btnP=document.getElementById('btn-promedio');\n"
+            + "    var btnE=document.getElementById('btn-evolucion');\n"
+            + "    var sel=document.getElementById('anio-select');\n"
+            + "    var titulo=document.getElementById('excel-chart-title');\n"
+            + "    if(vista==='promedio'){\n"
+            + "      btnP.style.background='#2E7D32';btnP.style.color='white';btnP.style.borderColor='#2E7D32';\n"
+            + "      if(btnE){btnE.style.background='white';btnE.style.color='#5A6779';btnE.style.borderColor='#D0D8E4';}\n"
+            + "      sel.style.display='none';\n"
+            + "      titulo.textContent='Precio medio por producto (€/kg)';\n"
+            + "      chart.config.type='bar';\n"
+            + "      chart.config.data={labels:barLabels,datasets:[{label:'€/kg',data:barValues,backgroundColor:barColors,borderRadius:4}]};\n"
+            + "      chart.config.options.plugins.legend.display=false;\n"
+            + "    } else {\n"
+            + "      if(btnE){btnE.style.background='#1565C0';btnE.style.color='white';btnE.style.borderColor='#1565C0';}\n"
+            + "      btnP.style.background='white';btnP.style.color='#5A6779';btnP.style.borderColor='#D0D8E4';\n"
+            + "      sel.style.display='inline-block';\n"
+            + "      titulo.textContent='Evolución mensual por producto (€/kg)';\n"
+            + "      chart.config.type='line';\n"
+            + "      chart.config.data={labels:meses,datasets:evoData[anioActual]||[]};\n"
+            + "      chart.config.options.plugins.legend.display=true;\n"
+            + "    }\n"
+            + "    chart.update();\n"
+            + "  };\n"
+            + "  window.excelCambiarAnio = function(){\n"
+            + "    anioActual=parseInt(document.getElementById('anio-select').value);\n"
+            + "    chart.config.data={labels:meses,datasets:evoData[anioActual]||[]};\n"
+            + "    chart.update();\n"
+            + "  };\n"
+            + "})();\n"
+            + "</script>\n";
     }
 
     // ─── Gráfica Chart.js ─────────────────────────────────────────────────────
@@ -874,5 +1141,4 @@ public class HTMLBuilder {
             return "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\nError: " + e.getMessage();
         }
     }
-
 }

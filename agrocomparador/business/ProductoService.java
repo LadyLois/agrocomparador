@@ -1,8 +1,11 @@
 package agrocomparador.business;
 
+import agrocomparador.data.DatabaseConnection;
 import agrocomparador.data.ProductoDAO;
+import agrocomparador.data.ProductoDAOScraper;
 import agrocomparador.scraper.AgrePreciosScraperDAO;
 import agrocomparador.scraper.ScraperScheduler;
+import java.sql.*;
 import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -180,7 +183,24 @@ public class ProductoService {
      * @return Mapa con estadísticas
      */
     public static Map<String, String> obtenerEstadisticasScraper() {
-        return new HashMap<>();//cambio para iniciar servidor
+        Map<String, String> stats = new HashMap<>();
+        String sql = "SELECT COUNT(*) AS total, COUNT(DISTINCT nombre) AS unicos, " +
+                     "ROUND(AVG(precio), 2) AS promedio, MAX(fecha_actualizacion) AS ultima " +
+                     "FROM precios_scraper";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                stats.put("total_registros",    String.valueOf(rs.getLong("total")));
+                stats.put("productos_unicos",   String.valueOf(rs.getInt("unicos")));
+                stats.put("precio_promedio",    String.format("%.2f", rs.getDouble("promedio")));
+                String u = rs.getString("ultima");
+                stats.put("ultima_actualizacion", u != null ? u : "");
+            }
+        } catch (Exception e) {
+            System.err.println("Error estadísticas: " + e.getMessage());
+        }
+        return stats;
     }
     
     /**

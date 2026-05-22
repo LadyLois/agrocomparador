@@ -1,8 +1,6 @@
 package agrocomparador.ui;
 
 import agrocomparador.business.ProductoService;
-import agrocomparador.data.MinisterioExcelDAO;
-import agrocomparador.data.InformeSemanalDAO;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -65,6 +63,8 @@ public class WebServer {
             if (filtroFechaDesde != null) filtroFechaDesde = URLDecoder.decode(filtroFechaDesde, "UTF-8");
             String filtroFechaHasta = params.get("fechaHasta");
             if (filtroFechaHasta != null) filtroFechaHasta = URLDecoder.decode(filtroFechaHasta, "UTF-8");
+            String filtroCategoria = params.get("categoria");
+            if (filtroCategoria != null) filtroCategoria = URLDecoder.decode(filtroCategoria, "UTF-8");
             String accion = params.get("accion");
 
             List<Map<String, Object>> productos = null;
@@ -81,18 +81,23 @@ public class WebServer {
                 }
                 if (filtroProducto != null && !filtroProducto.trim().isEmpty()) {
                     final String fp = filtroProducto;
-                    productos = base.stream()
+                    base = base.stream()
                         .filter(p -> ProductoService.coincidePublico(p, fp))
                         .collect(java.util.stream.Collectors.toList());
-                } else {
-                    productos = base;
                 }
+                if (filtroCategoria != null && !filtroCategoria.trim().isEmpty() && !filtroCategoria.equals("todos")) {
+                    final String cat = filtroCategoria.trim();
+                    base = base.stream()
+                        .filter(p -> HTMLBuilder.clasificarCategoria(p.getOrDefault("nombre","").toString()).equals(cat))
+                        .collect(java.util.stream.Collectors.toList());
+                }
+                productos = base;
             } catch (Exception e) {
                 error = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
                 System.err.println("❌ Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
 
-            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto, accion, filtroFechaDesde, filtroFechaHasta);
+            String htmlContent = HTMLBuilder.construirRespuestaHTML(productos, error, filtroProducto, accion, filtroFechaDesde, filtroFechaHasta, filtroCategoria);
             String respuestaHTTP = HTMLBuilder.construirRespuestaHTTP(htmlContent);
 
             salida.write(respuestaHTTP.getBytes("UTF-8"));
