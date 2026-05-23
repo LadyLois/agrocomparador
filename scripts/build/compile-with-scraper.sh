@@ -10,10 +10,15 @@ echo "============================================"
 echo ""
 
 # Verificar si los JARs existen
-if [ ! -f "lib/jsoup-1.15.3.jar" ]; then
+if [ ! -f "jsoup-1.15.3.jar" ]; then
     echo "❌ ERROR: jsoup-1.15.3.jar no encontrado"
     echo "   Descargalo desde: https://jsoup.org/download"
-    echo "   Ubicacion requerida: lib/jsoup-1.15.3.jar"
+    echo "   Ubicacion requerida: jsoup-1.15.3.jar"
+    exit 1
+fi
+
+if [ ! -f "mysql-connector-java-9.0.0.jar" ]; then
+    echo "❌ ERROR: mysql-connector-java-9.0.0.jar no encontrado"
     exit 1
 fi
 
@@ -23,7 +28,7 @@ echo "Compilando archivos Java..."
 echo ""
 
 # Compilar con classpath
-javac -cp "lib/jsoup-1.15.3.jar:lib/mysql-connector-java-8.0.33.jar" -d . \
+javac -cp "jsoup-1.15.3.jar:mysql-connector-java-9.0.0.jar" -d . \
     agrocomparador.java \
     agrocomparador/data/*.java \
     agrocomparador/business/*.java \
@@ -35,7 +40,7 @@ if [ $? -eq 0 ]; then
     echo "✓ Compilación exitosa!"
     echo ""
     echo "Para ejecutar:"
-    echo "  java -cp \"lib/jsoup-1.15.3.jar:lib/mysql-connector-java-8.0.33.jar:.\" agrocomparador"
+    echo "  java -cp \"jsoup-1.15.3.jar:mysql-connector-java-9.0.0.jar:.\" agrocomparador"
     echo ""
 else
     echo ""
