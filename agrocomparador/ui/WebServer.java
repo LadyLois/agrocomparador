@@ -35,6 +35,30 @@ public class WebServer {
 
             OutputStream salida = cliente.getOutputStream();
 
+            if (rutaBase.startsWith("/img/")) {
+                String filename = rutaBase.substring(5);
+                if (filename.matches("[a-zA-Z0-9_.-]+")) {
+                    java.io.File imgFile = new java.io.File("agrocomparador/img/" + filename);
+                    if (imgFile.exists() && imgFile.isFile()) {
+                        String mime = filename.endsWith(".png") ? "image/png"
+                                    : filename.endsWith(".webp") ? "image/webp"
+                                    : "image/jpeg";
+                        byte[] data = java.nio.file.Files.readAllBytes(imgFile.toPath());
+                        String header = "HTTP/1.1 200 OK\r\nContent-Type: " + mime + "\r\nContent-Length: " + data.length + "\r\nCache-Control: max-age=86400\r\nConnection: close\r\n\r\n";
+                        salida.write(header.getBytes("UTF-8"));
+                        salida.write(data);
+                    } else {
+                        salida.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes());
+                    }
+                } else {
+                    salida.write("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes());
+                }
+                salida.flush();
+                salida.close();
+                cliente.close();
+                return;
+            }
+
             if (rutaBase.equals("/vaciar")) {
                 String fechaVaciar = params.get("fecha");
                 if (fechaVaciar != null && !fechaVaciar.trim().isEmpty()) {
@@ -80,9 +104,10 @@ public class WebServer {
                     base = ProductoService.obtenerTodosLosProductosCombinados();
                 }
                 if (filtroProducto != null && !filtroProducto.trim().isEmpty()) {
-                    final String fp = filtroProducto;
+                    final String[] fps = filtroProducto.split(",");
                     base = base.stream()
-                        .filter(p -> ProductoService.coincidePublico(p, fp))
+                        .filter(p -> java.util.Arrays.stream(fps)
+                            .anyMatch(fp -> ProductoService.coincidePublico(p, fp.trim())))
                         .collect(java.util.stream.Collectors.toList());
                 }
                 if (filtroCategoria != null && !filtroCategoria.trim().isEmpty() && !filtroCategoria.equals("todos")) {

@@ -174,6 +174,65 @@ public class ProductoService {
         ScraperScheduler.getInstance().forzarActualizacionAsincrona(fecha);
     }
 
+    /**
+     * Tendencia real por producto desde la tabla precios (scraper web).
+     * Compara el precio medio de la fecha más reciente vs la anterior.
+     * Devuelve: {nombre, actual (€/kg), variacion (%), fecha}
+     */
+    public static List<Map<String, Object>> obtenerTendenciasScraperProductos() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        String sqlFechas = "SELECT DISTINCT DATE(fecha) AS f FROM precios " +
+                           "WHERE origen IN ('AGROPRECIOS','AGROPIZARRA') AND precio > 0 " +
+                           "ORDER BY f DESC LIMIT 2";
+        List<String> fechas = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sqlFechas)) {
+            while (rs.next()) fechas.add(rs.getString("f"));
+        } catch (Exception e) { return result; }
+
+        if (fechas.isEmpty()) return result;
+        String fechaActual = fechas.get(0);
+        String fechaPrevia = fechas.size() > 1 ? fechas.get(1) : null;
+
+        String sqlPrecio = "SELECT p.nombre, AVG(pr.precio) AS avg_precio " +
+                           "FROM precios pr JOIN productos p ON pr.producto_id = p.id " +
+                           "WHERE pr.origen IN ('AGROPRECIOS','AGROPIZARRA') " +
+                           "AND DATE(pr.fecha) = ? AND pr.precio > 0 GROUP BY p.nombre";
+
+        Map<String, Double> actuales = new LinkedHashMap<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sqlPrecio)) {
+            ps.setString(1, fechaActual);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) actuales.put(rs.getString("nombre"), rs.getDouble("avg_precio"));
+        } catch (Exception e) { return result; }
+
+        Map<String, Double> previos = new LinkedHashMap<>();
+        if (fechaPrevia != null) {
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sqlPrecio)) {
+                ps.setString(1, fechaPrevia);
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) previos.put(rs.getString("nombre"), rs.getDouble("avg_precio"));
+            } catch (Exception ignored) {}
+        }
+
+        for (Map.Entry<String, Double> e : actuales.entrySet()) {
+            String nombre = e.getKey();
+            double actual = e.getValue();
+            Double previo = previos.get(nombre);
+            double variacion = (previo != null && previo > 0) ? (actual - previo) / previo * 100.0 : 0.0;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("nombre",   nombre);
+            row.put("actual",   actual);
+            row.put("variacion", variacion);
+            row.put("fecha",    fechaActual);
+            result.add(row);
+        }
+        return result;
+    }
+
     public static Set<String> obtenerFechasEnProceso() {
         return ScraperScheduler.getFechasEnProceso();
     }

@@ -10,6 +10,10 @@ import java.util.stream.Collectors;
 
 public class HTMLBuilder {
 
+    // ─── Productos objetivo para tarjetas de tendencia ───────────────────────
+    private static final String[] PROD_TARJETA_NOMBRE = {"Tomate","Pimiento","Berenjena","Judía","Calabacín","Pepino"};
+    private static final String[] PROD_TARJETA_KEY    = {"tomate","pimiento","berenjena","judia","calabacin","pepino"};
+
     // ─── Alias de nombres de productos ───────────────────────────────────────
     // Clave: prefijo en minúsculas sin tildes → Valor: nombre canónico
     private static final Map<String, String> ALIAS_PRODUCTOS;
@@ -55,8 +59,7 @@ public class HTMLBuilder {
         if (accion != null && !accion.isEmpty())
             html.append(construirBanner(accion));
 
-        html.append(construirStatsGrid());
-        html.append(construirResumenSemana());
+        html.append(construirTarjetasProductos());
         html.append(construirToolbar(filtroAplicado, filtroFechaDesde, filtroFechaHasta, filtroCategoria));
 
         if (error != null && !error.isEmpty())
@@ -139,6 +142,25 @@ public class HTMLBuilder {
             + ".sugg-item { padding:9px 14px 9px 38px; cursor:pointer; font-size:13px; color:#1A2332; border-bottom:1px solid #F0F4F8; }\n"
             + ".sugg-item:last-child { border-bottom:none; }\n"
             + ".sugg-item:hover { background:#F0F4F8; }\n"
+            // Chip multi-select input
+            + ".chips-input-wrap { flex:1; min-width:200px; position:relative; background:#FAFBFC; border:1.5px solid #E0E7EF; border-radius:8px; cursor:text; }\n"
+            + ".chips-input-wrap:focus-within { border-color:#2E7D32; background:white; }\n"
+            + ".chips-area { display:flex; flex-wrap:wrap; align-items:center; gap:4px; padding:4px 8px 4px 34px; min-height:38px; position:relative; }\n"
+            + ".chips-area::before { content:'🔍'; position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; pointer-events:none; }\n"
+            + ".chip-tag { display:inline-flex; align-items:center; gap:3px; padding:2px 6px 2px 8px; background:#C8E6C9; border-radius:12px; font-size:12px; color:#1B5E20; font-weight:600; white-space:nowrap; }\n"
+            + ".chip-x { cursor:pointer; margin-left:2px; color:#4E7D54; font-size:14px; line-height:1; display:inline-block; }\n"
+            + ".chip-x:hover { color:#C62828; }\n"
+            + "#chip-search { border:none; outline:none; background:transparent; font-size:14px; color:#1A2332; min-width:60px; flex:1; padding:1px 4px; }\n"
+            // Producto cards (tendencias)
+            + ".prod-cards { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:18px; }\n"
+            + ".prod-card { border-radius:12px; padding:14px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; align-items:center; text-align:center; gap:5px; transition:transform 0.15s; border-left:4px solid transparent; }\n"
+            + ".prod-card:hover { transform:translateY(-2px); }\n"
+            + ".card-up { background:#E8F5E9; border-left-color:#4CAF50; }\n"
+            + ".card-down { background:#FFEBEE; border-left-color:#EF5350; }\n"
+            + ".card-neutral { background:#F5F5F5; border-left-color:#9E9E9E; }\n"
+            // Price coloring in table
+            + ".precio-bajo { color:#2E7D32 !important; }\n"
+            + ".precio-alto { color:#C62828 !important; }\n"
             + ".sep { width:1px; height:30px; background:#E0E7EF; margin:0 4px; flex-shrink:0; }\n"
             + ".btn { padding:9px 16px; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; text-decoration:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }\n"
             + ".btn-primary { background:#2E7D32; color:white; } .btn-primary:hover { background:#1B5E20; }\n"
@@ -240,8 +262,9 @@ public class HTMLBuilder {
             + ".empty-state small { font-size:13px; }\n"
 
             // Responsive
-            + "@media(max-width:720px) { .stats-grid { grid-template-columns:repeat(2,1fr); } .header-sources { display:none; } .sep { display:none; } }\n"
-            + "@media(max-width:500px) { .stats-grid { grid-template-columns:1fr 1fr; } }\n"
+            + "@media(max-width:900px) { .prod-cards { grid-template-columns:repeat(3,1fr); } }\n"
+            + "@media(max-width:720px) { .header-sources { display:none; } .sep { display:none; } }\n"
+            + "@media(max-width:500px) { .prod-cards { grid-template-columns:repeat(2,1fr); } }\n"
             + "</style>\n";
     }
 
@@ -319,6 +342,80 @@ public class HTMLBuilder {
         return obj.toString().replaceAll("\\s*\\([^)]+\\)\\*?$", "").trim();
     }
 
+    // ─── Tarjetas de tendencia por producto ──────────────────────────────────
+
+    private static String construirTarjetasProductos() {
+        // Datos reales del scraper web (tabla precios, origen AGROPRECIOS/AGROPIZARRA)
+        List<Map<String, Object>> tendencias = new ArrayList<>();
+        try { tendencias = ProductoService.obtenerTendenciasScraperProductos(); } catch (Exception ignored) {}
+
+        // Normalizar: prodNorm → datos de tendencia
+        Map<String, Map<String, Object>> lookup = new LinkedHashMap<>();
+        for (Map<String, Object> t : tendencias) {
+            String prod = normalizarMatch(t.getOrDefault("nombre", "").toString());
+            lookup.put(prod, t);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div class='prod-cards'>\n");
+
+        for (int i = 0; i < PROD_TARJETA_NOMBRE.length; i++) {
+            String name  = PROD_TARJETA_NOMBRE[i];
+            String key   = PROD_TARJETA_KEY[i];
+            String icono = iconoProducto(key);
+            String imgSrc = "/img/" + key + ".jpg";
+
+            // Buscar coincidencia: igual, contiene, o contenido por
+            Map<String, Object> data = null;
+            for (Map.Entry<String, Map<String, Object>> e : lookup.entrySet()) {
+                String k = e.getKey();
+                if (k.equals(key) || k.startsWith(key) || key.startsWith(k)) {
+                    data = e.getValue(); break;
+                }
+            }
+
+            double actual = 0, variacion = 0;
+            String fecha = "";
+            if (data != null) {
+                actual    = ((Number) data.getOrDefault("actual",    0.0)).doubleValue();
+                variacion = ((Number) data.getOrDefault("variacion", 0.0)).doubleValue();
+                fecha     = data.getOrDefault("fecha", "").toString();
+            }
+
+            boolean rising  = variacion >  0.05;
+            boolean falling = variacion < -0.05;
+            boolean hasData = actual > 0;
+
+            String cardCls    = hasData ? (rising ? "card-up" : (falling ? "card-down" : "card-neutral")) : "card-neutral";
+            String trendColor = rising  ? "#2E7D32" : (falling ? "#C62828" : "#78909C");
+            String trendArrow = rising  ? "▲"       : (falling ? "▼"       : "—");
+            String trendTxt   = (variacion != 0) ? String.format(Locale.US, "%+.1f%%", variacion) : "estable";
+
+            sb.append("  <div class='prod-card ").append(cardCls).append("'>\n");
+            // Miniatura circular con fallback al emoji
+            sb.append("    <div style='width:56px;height:56px;border-radius:50%;overflow:hidden;border:2px solid rgba(0,0,0,.08);flex-shrink:0'>\n");
+            sb.append("      <img src='").append(imgSrc).append("' alt='").append(escapeHTML(name))
+              .append("' style='width:100%;height:100%;object-fit:cover' onerror=\"this.parentElement.innerHTML='<span style=\\'font-size:32px;line-height:56px;display:block;text-align:center\\'>");
+            sb.append(icono).append("</span>'\">\n");
+            sb.append("    </div>\n");
+            sb.append("    <div style='font-size:12px;font-weight:700;color:#1A2332;margin-top:2px'>").append(escapeHTML(name)).append("</div>\n");
+            if (hasData) {
+                sb.append("    <div style='font-size:13px;font-weight:600;color:#1A2332'>€")
+                  .append(String.format(Locale.US, "%.2f", actual)).append("/kg</div>\n");
+                sb.append("    <div style='font-size:14px;font-weight:700;color:").append(trendColor).append(";'>")
+                  .append(trendArrow).append(" ").append(escapeHTML(trendTxt)).append("</div>\n");
+                if (!fecha.isEmpty())
+                    sb.append("    <div style='font-size:10px;color:#9E9E9E'>").append(escapeHTML(fecha)).append("</div>\n");
+            } else {
+                sb.append("    <div style='font-size:11px;color:#9E9E9E;margin-top:6px'>Sin datos</div>\n");
+            }
+            sb.append("  </div>\n");
+        }
+
+        sb.append("</div>\n");
+        return sb.toString();
+    }
+
     // ─── Stats grid ──────────────────────────────────────────────────────────
 
     private static String construirStatsGrid() {
@@ -362,17 +459,29 @@ public class HTMLBuilder {
         tb.append("<div class='toolbar'>\n");
         tb.append("  <form method='GET' action='/' style='display:flex;gap:8px;flex:1;min-width:0;align-items:center;flex-wrap:wrap;'>\n");
 
-        // Autocomplete con sugerencias de productos
+        // Autocomplete multi-selección con chips
         List<String> sugerencias = new ArrayList<>();
         try { sugerencias = ProductoService.obtenerNombresProductos(); } catch (Exception ignored) {}
 
-        tb.append("    <div class='search-wrap'>\n");
-        tb.append("      <input type='text' name='producto' id='search-input' autocomplete='off' ");
-        tb.append("placeholder='Buscar producto...' ");
-        if (filtro != null && !filtro.isEmpty())
-            tb.append("value='").append(escapeHTML(filtro)).append("'");
-        tb.append(" onfocus='showSugg()' oninput='showSugg()' onblur='hideSugg()'>\n");
+        // Array JS con los productos actualmente seleccionados (del filtro URL)
+        String filtroInitJS = "[]";
+        if (filtro != null && !filtro.trim().isEmpty()) {
+            String[] parts = filtro.split(",");
+            StringBuilder initArr = new StringBuilder("[");
+            for (int idx = 0; idx < parts.length; idx++) {
+                if (idx > 0) initArr.append(",");
+                initArr.append("'").append(escapeJS(parts[idx].trim())).append("'");
+            }
+            initArr.append("]");
+            filtroInitJS = initArr.toString();
+        }
 
+        tb.append("    <div class='chips-input-wrap'>\n");
+        tb.append("      <div class='chips-area' id='chips-area'>\n");
+        tb.append("        <input type='text' id='chip-search' autocomplete='off'");
+        tb.append(" onfocus='showSugg()' oninput='showSugg()' onblur='hideSugg()'>\n");
+        tb.append("      </div>\n");
+        tb.append("      <input type='hidden' name='producto' id='producto-hidden'>\n");
         if (!sugerencias.isEmpty()) {
             tb.append("      <div class='sugg-list' id='sugg-list'>\n");
             for (String nombre : sugerencias) {
@@ -380,23 +489,61 @@ public class HTMLBuilder {
                     .replace("á","a").replace("é","e").replace("í","i")
                     .replace("ó","o").replace("ú","u").replace("ñ","n"));
                 tb.append("        <div class='sugg-item' data-nombre='").append(escapeHTML(nombre))
-                  .append("' onmousedown=\"setSugg('").append(escapeHTML(nombre))
+                  .append("' onmousedown=\"setSugg('").append(escapeJS(nombre))
                   .append("')\">").append(icono).append(" ").append(escapeHTML(nombre)).append("</div>\n");
             }
             tb.append("      </div>\n");
         }
         tb.append("    </div>\n");
-        tb.append("<script>\n")
-          .append("function showSugg(){var v=document.getElementById('search-input').value.toLowerCase();")
-          .append("var items=document.querySelectorAll('.sugg-item');var vis=0;")
-          .append("items.forEach(function(it){var m=v===''||it.dataset.nombre.toLowerCase().includes(v);")
-          .append("it.style.display=m?'':'none';if(m)vis++;});")
-          .append("var l=document.getElementById('sugg-list');if(l)l.style.display=vis>0?'block':'none';}\n")
-          .append("function hideSugg(){setTimeout(function(){var l=document.getElementById('sugg-list');if(l)l.style.display='none';},150);}\n")
-          .append("function setSugg(n){document.getElementById('search-input').value=n;")
-          .append("document.getElementById('sugg-list').style.display='none';")
-          .append("document.querySelector('.toolbar form').submit();}\n")
-          .append("</script>\n");
+        tb.append("<script>\n");
+        tb.append("(function(){\n");
+        tb.append("  var sel=").append(filtroInitJS).append(";\n");
+        tb.append("  function escH(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\n");
+        tb.append("  function renderChips(){\n");
+        tb.append("    var area=document.getElementById('chips-area');\n");
+        tb.append("    area.querySelectorAll('.chip-tag').forEach(function(c){c.remove();});\n");
+        tb.append("    var inp=document.getElementById('chip-search');\n");
+        tb.append("    sel.forEach(function(name){\n");
+        tb.append("      var span=document.createElement('span');\n");
+        tb.append("      span.className='chip-tag';\n");
+        tb.append("      span.dataset.rm=encodeURIComponent(name);\n");
+        tb.append("      span.innerHTML=escH(name)+'<span class=\"chip-x\">&#215;</span>';\n");
+        tb.append("      area.insertBefore(span,inp);\n");
+        tb.append("    });\n");
+        tb.append("    document.getElementById('producto-hidden').value=sel.join(',');\n");
+        tb.append("    inp.placeholder=sel.length===0?'Buscar producto...':'';\n");
+        tb.append("  }\n");
+        tb.append("  document.addEventListener('click',function(e){\n");
+        tb.append("    if(e.target.classList.contains('chip-x')){\n");
+        tb.append("      var name=decodeURIComponent(e.target.parentElement.dataset.rm);\n");
+        tb.append("      sel=sel.filter(function(x){return x!==name;});\n");
+        tb.append("      renderChips();\n");
+        tb.append("    }\n");
+        tb.append("  });\n");
+        tb.append("  window.setSugg=function(n){\n");
+        tb.append("    if(sel.indexOf(n)===-1){sel.push(n);renderChips();}\n");
+        tb.append("    document.getElementById('chip-search').value='';\n");
+        tb.append("    showSugg();\n");
+        tb.append("  };\n");
+        tb.append("  window.showSugg=function(){\n");
+        tb.append("    var v=document.getElementById('chip-search').value.toLowerCase();\n");
+        tb.append("    var items=document.querySelectorAll('.sugg-item');var vis=0;\n");
+        tb.append("    items.forEach(function(it){\n");
+        tb.append("      var n=it.dataset.nombre;\n");
+        tb.append("      var m=(v===''||n.toLowerCase().includes(v))&&sel.indexOf(n)===-1;\n");
+        tb.append("      it.style.display=m?'':'none';if(m)vis++;\n");
+        tb.append("    });\n");
+        tb.append("    var l=document.getElementById('sugg-list');if(l)l.style.display=vis>0?'block':'none';\n");
+        tb.append("  };\n");
+        tb.append("  window.hideSugg=function(){\n");
+        tb.append("    setTimeout(function(){var l=document.getElementById('sugg-list');if(l)l.style.display='none';},150);\n");
+        tb.append("  };\n");
+        tb.append("  document.getElementById('chips-area').addEventListener('click',function(){\n");
+        tb.append("    document.getElementById('chip-search').focus();\n");
+        tb.append("  });\n");
+        tb.append("  renderChips();\n");
+        tb.append("})();\n");
+        tb.append("</script>\n");
 
         // Selector de rango de fechas
         if (!fechas.isEmpty()) {
@@ -860,6 +1007,17 @@ public class HTMLBuilder {
                   .add(p);
         }
 
+        // Precio medio por producto para colorear filas (verde=barato, rojo=caro)
+        Map<String, Double> avgPrecio = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, List<Map<String, Object>>>> e : grupos.entrySet()) {
+            OptionalDouble avg = e.getValue().values().stream()
+                .flatMap(List::stream)
+                .mapToDouble(p -> { try { return ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); } catch (Exception ex) { return 0; } })
+                .filter(v -> v > 0)
+                .average();
+            avgPrecio.put(e.getKey(), avg.orElse(0.0));
+        }
+
         StringBuilder t = new StringBuilder();
         t.append("<div class='card'>\n");
         t.append("  <div class='card-head'>\n");
@@ -939,11 +1097,23 @@ public class HTMLBuilder {
                     try { precio = ((Number) p.getOrDefault("precio", 0.0)).doubleValue(); } catch (Exception e) { precio = 0.0; }
                     String fecha = p.getOrDefault("fecha_actualizacion", "").toString();
 
+                    double avg = avgPrecio.getOrDefault(nombre, 0.0);
+                    String pClass = "precio";
+                    String pTitle = "";
+                    if (avg > 0 && precio > 0) {
+                        if (precio < avg - 0.005) {
+                            pClass = "precio precio-bajo";
+                            pTitle = " title='Por debajo de la media (€" + String.format(Locale.US, "%.2f", avg) + "/kg)'";
+                        } else if (precio > avg + 0.005) {
+                            pClass = "precio precio-alto";
+                            pTitle = " title='Por encima de la media (€" + String.format(Locale.US, "%.2f", avg) + "/kg)'";
+                        }
+                    }
                     t.append("      <tr class='group-child ").append(rowCls).append("' data-group='").append(gid).append("' data-subgroup='").append(sgid).append("'>\n");
                     t.append("        <td class='child-indent'>└</td>\n");
                     t.append("        <td></td>\n");
                     t.append("        <td>").append(escapeHTML(p.getOrDefault("fuente", "").toString())).append("</td>\n");
-                    t.append("        <td class='precio'>€").append(String.format(Locale.US, "%.2f", precio)).append("</td>\n");
+                    t.append("        <td class='").append(pClass).append("'").append(pTitle).append(">€").append(String.format(Locale.US, "%.2f", precio)).append("</td>\n");
                     t.append("        <td><span class='orn ").append(ornCls).append("'>").append(ornLabel).append("</span></td>\n");
                     t.append("        <td class='fecha-cell'>").append(escapeHTML(formatearFecha(fecha))).append("</td>\n");
                     t.append("      </tr>\n");
