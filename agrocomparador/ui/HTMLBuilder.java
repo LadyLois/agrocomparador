@@ -56,6 +56,7 @@ public class HTMLBuilder {
             html.append(construirBanner(accion));
 
         html.append(construirStatsGrid());
+        html.append(construirResumenSemana());
         html.append(construirToolbar(filtroAplicado, filtroFechaDesde, filtroFechaHasta, filtroCategoria));
 
         if (error != null && !error.isEmpty())
@@ -134,6 +135,10 @@ public class HTMLBuilder {
             + ".search-wrap::before { content:'🔍'; position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; pointer-events:none; }\n"
             + ".search-wrap input { width:100%; padding:9px 14px 9px 38px; border:1.5px solid #E0E7EF; border-radius:8px; font-size:14px; color:#1A2332; outline:none; transition:border-color 0.2s; background:#FAFBFC; }\n"
             + ".search-wrap input:focus { border-color:#2E7D32; background:white; }\n"
+            + ".sugg-list { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:white; border:1.5px solid #E0E7EF; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.10); z-index:200; overflow:hidden; }\n"
+            + ".sugg-item { padding:9px 14px 9px 38px; cursor:pointer; font-size:13px; color:#1A2332; border-bottom:1px solid #F0F4F8; }\n"
+            + ".sugg-item:last-child { border-bottom:none; }\n"
+            + ".sugg-item:hover { background:#F0F4F8; }\n"
             + ".sep { width:1px; height:30px; background:#E0E7EF; margin:0 4px; flex-shrink:0; }\n"
             + ".btn { padding:9px 16px; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; text-decoration:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }\n"
             + ".btn-primary { background:#2E7D32; color:white; } .btn-primary:hover { background:#1B5E20; }\n"
@@ -270,6 +275,50 @@ public class HTMLBuilder {
         return "";
     }
 
+    // ─── Resumen de la semana ────────────────────────────────────────────────
+
+    private static String construirResumenSemana() {
+        Map<String, Map<String, Object>> res;
+        try { res = InformeSemanalDAO.obtenerResumenSemana(); }
+        catch (Exception e) { return ""; }
+        if (res == null || res.isEmpty()) return "";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px'>\n");
+
+        Map<String, Object> caro   = res.get("masCaros");
+        Map<String, Object> subida = res.get("mayorSubida");
+        Map<String, Object> bajada = res.get("mayorBajada");
+
+        if (caro != null)   sb.append(tarjetaResumen("💰", "Más caro esta semana",
+            limpiarNombreSemanal(caro.get("producto")),
+            String.format("%.2f €/100 kg", caro.get("precio")), "", "#1565C0", "#E3F2FD", "#0D47A1"));
+        if (subida != null) { double v = ((Number)subida.get("variacion")).doubleValue();
+            sb.append(tarjetaResumen("📈", "Mayor subida semanal",
+            limpiarNombreSemanal(subida.get("producto")),
+            String.format("%+.2f%%", v), v > 0 ? "▲" : "", "#2E7D32", "#E8F5E9", "#1B5E20")); }
+        if (bajada != null) { double v = ((Number)bajada.get("variacion")).doubleValue();
+            sb.append(tarjetaResumen("📉", "Mayor bajada semanal",
+            limpiarNombreSemanal(bajada.get("producto")),
+            String.format("%+.2f%%", v), v < 0 ? "▼" : "", "#C62828", "#FFEBEE", "#B71C1C")); }
+
+        sb.append("</div>\n");
+        return sb.toString();
+    }
+
+    private static String tarjetaResumen(String icono, String titulo, String producto, String valor, String flecha, String colorBorde, String colorFondo, String colorTexto) {
+        return "<div style='background:" + colorFondo + ";border-radius:12px;padding:16px 18px;border-left:4px solid " + colorBorde + ";box-shadow:0 1px 3px rgba(0,0,0,.06)'>\n"
+            + "  <div style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:" + colorBorde + ";margin-bottom:6px'>" + icono + " " + titulo + "</div>\n"
+            + "  <div style='font-size:13px;font-weight:600;color:#1A2332;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>" + escapeHTML(producto) + "</div>\n"
+            + "  <div style='font-size:20px;font-weight:700;color:" + colorTexto + "'>" + flecha + " " + escapeHTML(valor) + "</div>\n"
+            + "</div>\n";
+    }
+
+    private static String limpiarNombreSemanal(Object obj) {
+        if (obj == null) return "";
+        return obj.toString().replaceAll("\\s*\\([^)]+\\)\\*?$", "").trim();
+    }
+
     // ─── Stats grid ──────────────────────────────────────────────────────────
 
     private static String construirStatsGrid() {
@@ -313,11 +362,41 @@ public class HTMLBuilder {
         tb.append("<div class='toolbar'>\n");
         tb.append("  <form method='GET' action='/' style='display:flex;gap:8px;flex:1;min-width:0;align-items:center;flex-wrap:wrap;'>\n");
 
-        tb.append("    <div class='search-wrap'>");
-        tb.append("<input type='text' name='producto' placeholder='Buscar por producto, variedad, fuente u origen...' ");
+        // Autocomplete con sugerencias de productos
+        List<String> sugerencias = new ArrayList<>();
+        try { sugerencias = ProductoService.obtenerNombresProductos(); } catch (Exception ignored) {}
+
+        tb.append("    <div class='search-wrap'>\n");
+        tb.append("      <input type='text' name='producto' id='search-input' autocomplete='off' ");
+        tb.append("placeholder='Buscar producto...' ");
         if (filtro != null && !filtro.isEmpty())
             tb.append("value='").append(escapeHTML(filtro)).append("'");
-        tb.append("/></div>\n");
+        tb.append(" onfocus='showSugg()' oninput='showSugg()' onblur='hideSugg()'>\n");
+
+        if (!sugerencias.isEmpty()) {
+            tb.append("      <div class='sugg-list' id='sugg-list'>\n");
+            for (String nombre : sugerencias) {
+                String icono = iconoProducto(nombre.toLowerCase()
+                    .replace("á","a").replace("é","e").replace("í","i")
+                    .replace("ó","o").replace("ú","u").replace("ñ","n"));
+                tb.append("        <div class='sugg-item' data-nombre='").append(escapeHTML(nombre))
+                  .append("' onmousedown=\"setSugg('").append(escapeHTML(nombre))
+                  .append("')\">").append(icono).append(" ").append(escapeHTML(nombre)).append("</div>\n");
+            }
+            tb.append("      </div>\n");
+        }
+        tb.append("    </div>\n");
+        tb.append("<script>\n")
+          .append("function showSugg(){var v=document.getElementById('search-input').value.toLowerCase();")
+          .append("var items=document.querySelectorAll('.sugg-item');var vis=0;")
+          .append("items.forEach(function(it){var m=v===''||it.dataset.nombre.toLowerCase().includes(v);")
+          .append("it.style.display=m?'':'none';if(m)vis++;});")
+          .append("var l=document.getElementById('sugg-list');if(l)l.style.display=vis>0?'block':'none';}\n")
+          .append("function hideSugg(){setTimeout(function(){var l=document.getElementById('sugg-list');if(l)l.style.display='none';},150);}\n")
+          .append("function setSugg(n){document.getElementById('search-input').value=n;")
+          .append("document.getElementById('sugg-list').style.display='none';")
+          .append("document.querySelector('.toolbar form').submit();}\n")
+          .append("</script>\n");
 
         // Selector de rango de fechas
         if (!fechas.isEmpty()) {
@@ -338,36 +417,13 @@ public class HTMLBuilder {
             tb.append("    </div>\n");
         }
 
-        // Categoría activa como campo oculto actualizado por JS
-        String catActiva = (categoria != null && !categoria.isEmpty()) ? categoria : "todos";
-        tb.append("    <input type='hidden' name='categoria' id='cat-hidden' value='").append(escapeHTML(catActiva)).append("'>\n");
         tb.append("    <button type='submit' class='btn btn-primary'>Buscar</button>\n");
         boolean hayFiltro = (filtro != null && !filtro.isEmpty())
                          || (filtroFechaDesde != null && !filtroFechaDesde.isEmpty())
-                         || (filtroFechaHasta  != null && !filtroFechaHasta.isEmpty())
-                         || (categoria != null && !categoria.isEmpty() && !categoria.equals("todos"));
+                         || (filtroFechaHasta  != null && !filtroFechaHasta.isEmpty());
         if (hayFiltro)
             tb.append("    <a href='/' class='btn btn-ghost'>✕ Limpiar</a>\n");
         tb.append("  </form>\n");
-
-        // Chips de categoría
-        tb.append("  <div class='sep'></div>\n");
-        tb.append("  <div style='display:flex;gap:5px;align-items:center'>\n");
-        for (String[] chip : new String[][]{
-                {"todos","Todos",""},
-                {"hortalizas","🥦 Hortalizas",""},
-                {"frutas","🍊 Frutas",""},
-                {"cereales","🌾 Cereales/Aceites",""}}) {
-            boolean activo = chip[0].equals(catActiva);
-            String estilo = activo
-                ? "background:#2E7D32;color:white;border-color:#2E7D32;"
-                : "background:white;color:#5A6779;border-color:#D0D8E4;";
-            tb.append("  <button onclick=\"document.getElementById('cat-hidden').value='")
-              .append(chip[0]).append("';document.querySelector('.toolbar form').submit();\" ")
-              .append("style='padding:5px 12px;border:1.5px solid;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;")
-              .append(estilo).append("'>").append(chip[1]).append("</button>\n");
-        }
-        tb.append("  </div>\n");
         tb.append("  <div class='sep'></div>\n");
         tb.append("  <a href='#' class='btn btn-blue' onclick=\"document.getElementById('modal-carga').style.display='flex';return false;\">⬇️ Cargar datos</a>\n");
         tb.append("  <a href='#' class='btn btn-danger' onclick=\"document.getElementById('modal-vaciar').style.display='flex';return false;\">🗑️ Vaciar</a>\n");
@@ -506,7 +562,7 @@ public class HTMLBuilder {
         } catch (Exception ignored) {}
 
         List<Integer> anios = new ArrayList<>(aniosSet);
-        int anioDefault = anios.isEmpty() ? 2025 : anios.get(anios.size() - 1);
+        int anioDefault = anios.contains(2025) ? 2025 : (anios.isEmpty() ? 2025 : anios.get(anios.size() - 1));
         boolean hayEvo = !evoDataMap.isEmpty();
 
         // Serializar meses

@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-Process *)"
+      "PowerShell(Get-Process *)",
+      "Bash(javac -cp \".;mysql-connector-java-9.0.0.jar;jsoup-1.15.3.jar\" agrocomparador/data/*.java agrocomparador/business/*.java agrocomparador/scraper/*.java agrocomparador/ui/*.java agrocomparador.java)"
     ]
   }
 }

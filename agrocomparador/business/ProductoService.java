@@ -182,6 +182,19 @@ public class ProductoService {
      * Obtiene estadísticas del scraper
      * @return Mapa con estadísticas
      */
+    public static List<String> obtenerNombresProductos() {
+        List<String> names = new ArrayList<>();
+        String sql = "SELECT DISTINCT nombre FROM productos WHERE nombre != 'Pto.' ORDER BY nombre";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) names.add(rs.getString("nombre"));
+        } catch (Exception e) {
+            System.err.println("Error nombres productos: " + e.getMessage());
+        }
+        return names;
+    }
+
     public static Map<String, String> obtenerEstadisticasScraper() {
         Map<String, String> stats = new HashMap<>();
         String sql = "SELECT COUNT(*) AS total, COUNT(DISTINCT nombre) AS unicos, " +

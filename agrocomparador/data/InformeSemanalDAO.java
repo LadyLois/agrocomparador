@@ -205,6 +205,36 @@ public class InformeSemanalDAO {
         return result;
     }
 
+    public static Map<String, Map<String, Object>> obtenerResumenSemana() {
+        Map<String, Map<String, Object>> resumen = new LinkedHashMap<>();
+        String sql = "SELECT producto, precio_actual, variacion_pct " +
+                     "FROM precios_semanales " +
+                     "WHERE semana = (SELECT MAX(semana) FROM precios_semanales) " +
+                     "AND precio_actual > 0";
+        List<Map<String, Object>> rows = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> r = new HashMap<>();
+                r.put("producto", rs.getString("producto"));
+                r.put("precio",   rs.getDouble("precio_actual"));
+                r.put("variacion", rs.getDouble("variacion_pct"));
+                rows.add(r);
+            }
+        } catch (Exception e) {
+            return resumen;
+        }
+        if (rows.isEmpty()) return resumen;
+        rows.stream().max(Comparator.comparingDouble(r -> ((Number)r.get("precio")).doubleValue()))
+            .ifPresent(r -> resumen.put("masCaros", r));
+        rows.stream().max(Comparator.comparingDouble(r -> ((Number)r.get("variacion")).doubleValue()))
+            .ifPresent(r -> resumen.put("mayorSubida", r));
+        rows.stream().min(Comparator.comparingDouble(r -> ((Number)r.get("variacion")).doubleValue()))
+            .ifPresent(r -> resumen.put("mayorBajada", r));
+        return resumen;
+    }
+
     public static List<String> obtenerSemanas() {
         List<String> result = new ArrayList<>();
         String sql = "SELECT DISTINCT semana FROM precios_semanales ORDER BY semana";
