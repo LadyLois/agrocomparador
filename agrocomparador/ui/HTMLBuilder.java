@@ -304,7 +304,7 @@ public class HTMLBuilder {
             // ── Table flag / pct columns ──
             + ".flag-cell{font-size:16px;padding-left:12px!important;padding-right:4px!important;width:32px;text-align:center}\n"
             + ".pct-badge{display:inline-flex;align-items:center;gap:2px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600}\n"
-            + ".pct-up{background:#FEE2E2;color:#DC2626}.pct-dn{background:var(--g100);color:var(--g800)}.pct-neu{background:var(--sand2);color:var(--txm)}\n"
+            + ".pct-up{background:var(--g100);color:var(--g800)}.pct-dn{background:#FEE2E2;color:#DC2626}.pct-neu{background:var(--sand2);color:var(--txm)}\n"
             + ".min-ref{font-size:11px;color:var(--txm);font-weight:400}\n"
 
             // ── Table ──
@@ -483,7 +483,7 @@ public class HTMLBuilder {
 
         if (caro != null)   sb.append(tarjetaResumen("💰", "Más caro esta semana",
             limpiarNombreSemanal(caro.get("producto")),
-            String.format("%.2f €/100 kg", caro.get("precio")), "", "#1565C0", "#E3F2FD", "#0D47A1"));
+            String.format("%.2f €/kg", ((Number)caro.get("precio")).doubleValue() / 100.0), "", "#1565C0", "#E3F2FD", "#0D47A1"));
         if (subida != null) { double v = ((Number)subida.get("variacion")).doubleValue();
             sb.append(tarjetaResumen("📈", "Mayor subida semanal",
             limpiarNombreSemanal(subida.get("producto")),
@@ -507,7 +507,7 @@ public class HTMLBuilder {
 
     private static String limpiarNombreSemanal(Object obj) {
         if (obj == null) return "";
-        return obj.toString().replaceAll("\\s*\\([^)]+\\)\\*?$", "").trim();
+        return obj.toString().replaceAll("\\s*\\([^)]+\\)\\*?$", "").replaceAll("\\*+$", "").trim();
     }
 
     // ─── Tarjetas de tendencia por producto ──────────────────────────────────
@@ -860,7 +860,7 @@ public class HTMLBuilder {
                 String mpNorm = normalizarMatch(mp);
                 boolean match = nombresScraper.stream().anyMatch(n -> productosCoinciden(mpNorm, n));
                 if (!match) continue;
-                String label = mp.replaceAll("\\s*\\([^)]+\\)\\*?$","").trim()
+                String label = mp.replaceAll("\\s*\\([^)]+\\)\\*?$","").replaceAll("\\*+$","").trim()
                                  .replace("PIMIENTO","Pimiento").replace("TOMATE","Tomate")
                                  .replace("BERENJENA","Berenjena").replace("CALABACIN","Calabacín")
                                  .replace("PEPINO","Pepino").replace("JUDIA","Judía");
@@ -945,7 +945,8 @@ public class HTMLBuilder {
                 String lbl = sp.replaceAll("\\s*-\\s*(Total|total).*$","").trim()
                                .replace("PIMIENTO","Pimiento").replace("TOMATE","Tomate")
                                .replace("BERENJENA","Berenjena").replace("CALABACIN","Calabacín")
-                               .replace("PEPINO","Pepino").replace("JUDIA","Judía");
+                               .replace("PEPINO","Pepino").replace("JUDIA","Judía")
+                               .replaceAll("\\s*\\([^)]+\\)\\*?$","").replaceAll("\\*+$","").trim();
                 Map<String,Double> precios = InformeSemanalDAO.obtenerPreciosPorSemana(sp);
                 if (precios.isEmpty()) continue;
                 String color = linePal[semIdx % linePal.length];
