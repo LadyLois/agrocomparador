@@ -3,8 +3,8 @@ package agrocomparador.ui;
 import agrocomparador.business.ProductoService;
 import agrocomparador.data.InformeSemanalDAO;
 import agrocomparador.data.MinisterioExcelDAO;
-import java.time.LocalDate;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -295,6 +295,8 @@ public class HTMLBuilder {
             return "<div class='banner banner-success'>✅ Datos vaciados correctamente.</div>\n";
         if ("cargando".equals(accion))
             return "<div class='banner banner-info'>⏳ Carga iniciada en segundo plano — los resultados aparecerán en unos minutos.</div>\n";
+        if ("error_clave".equals(accion))
+            return "<div class='banner' style='background:#FFEBEE;border-color:#FFCDD2;color:#B71C1C;'>❌ Contraseña incorrecta. No se han eliminado datos.</div>\n";
         return "";
     }
 
@@ -1244,9 +1246,9 @@ public class HTMLBuilder {
         List<String> diasHabiles = new ArrayList<>();
         LocalDate dia = LocalDate.now();
         while (diasHabiles.size() < 10) {
-            DayOfWeek dow = dia.getDayOfWeek();
-            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY)
+            if (dia.getDayOfWeek() != DayOfWeek.SUNDAY) {
                 diasHabiles.add(dia.toString());
+            }
             dia = dia.minusDays(1);
         }
 
@@ -1308,20 +1310,31 @@ public class HTMLBuilder {
         List<String> diasHabiles = new ArrayList<>();
         LocalDate dia = LocalDate.now();
         while (diasHabiles.size() < 10) {
-            DayOfWeek dow = dia.getDayOfWeek();
-            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY)
+            if (dia.getDayOfWeek() != DayOfWeek.SUNDAY) {
                 diasHabiles.add(dia.toString());
+            }
             dia = dia.minusDays(1);
         }
         Set<String> cargadas = new HashSet<>(fechasConDatos);
         String hoy = LocalDate.now().toString();
+        boolean requiereClave = !System.getenv().getOrDefault("ADMIN_PASSWORD", "").isEmpty();
 
         StringBuilder sb = new StringBuilder();
         sb.append("<div id='modal-vaciar' class='modal-overlay' onclick=\"if(event.target===this)this.style.display='none'\">\n");
         sb.append("  <div class='modal-box'>\n");
         sb.append("    <div class='modal-title'>🗑️ Vaciar datos del scraper</div>\n");
         sb.append("    <div class='modal-sub'>Elige qué datos eliminar de la base de datos:</div>\n");
-        sb.append("    <div style='display:flex;flex-direction:column;gap:7px;max-height:310px;overflow-y:auto;padding-right:4px;margin-bottom:14px;'>\n");
+
+        if (requiereClave) {
+            sb.append("    <div style='margin-bottom:14px;'>\n");
+            sb.append("      <label style='font-size:12px;color:#78909C;display:block;margin-bottom:5px;font-weight:600;'>🔒 Contraseña de administrador</label>\n");
+            sb.append("      <input type='password' id='vaciar-clave' placeholder='Contraseña requerida'\n");
+            sb.append("        style='width:100%;padding:9px 12px;border:1.5px solid #FFCDD2;border-radius:8px;font-size:14px;outline:none;'\n");
+            sb.append("        onfocus=\"this.style.borderColor='#C62828'\" onblur=\"this.style.borderColor='#FFCDD2'\">\n");
+            sb.append("    </div>\n");
+        }
+
+        sb.append("    <div style='display:flex;flex-direction:column;gap:7px;max-height:270px;overflow-y:auto;padding-right:4px;margin-bottom:14px;'>\n");
 
         for (String fechaDia : diasHabiles) {
             boolean tieneDatos = cargadas.contains(fechaDia);
@@ -1333,10 +1346,9 @@ public class HTMLBuilder {
             sb.append("        <div class='dia-label'><span>📅 ")
               .append(escapeHTML(fmt)).append(escapeHTML(sufijo)).append("</span></div>\n");
             if (tieneDatos) {
-                sb.append("        <a href='/vaciar?fecha=").append(fechaDia)
-                  .append("' class='btn btn-danger' style='padding:4px 12px;font-size:12px;' ")
-                  .append("onclick=\"return confirm('¿Vaciar datos del ").append(escapeHTML(fmt)).append("?')\">")
-                  .append("🗑️ Vaciar</a>\n");
+                sb.append("        <button type='button' class='btn btn-danger' style='padding:4px 12px;font-size:12px;'\n");
+                sb.append("          onclick=\"vaciarConClave('").append(fechaDia).append("','").append(escapeJS(fmt)).append("')\">")
+                  .append("🗑️ Vaciar</button>\n");
             } else {
                 sb.append("        <span class='dia-badge dia-badge-proc' style='background:#F5F5F5;color:#BBBBBB;'>sin datos</span>\n");
             }
@@ -1345,11 +1357,28 @@ public class HTMLBuilder {
 
         sb.append("    </div>\n");
         sb.append("    <div style='display:flex;gap:8px;justify-content:space-between;align-items:center;border-top:1px solid #EEF2F7;padding-top:14px;'>\n");
-        sb.append("      <a href='/vaciar' class='btn btn-danger' onclick=\"return confirm('¿Vaciar TODOS los datos del scraper?')\">🗑️ Vaciar todo</a>\n");
+        sb.append("      <button type='button' class='btn btn-danger' onclick=\"vaciarConClave('','todo')\">🗑️ Vaciar todo</button>\n");
         sb.append("      <button type='button' onclick=\"document.getElementById('modal-vaciar').style.display='none'\" class='btn btn-ghost'>Cerrar</button>\n");
         sb.append("    </div>\n");
         sb.append("  </div>\n");
         sb.append("</div>\n");
+        sb.append("<script>\n");
+        sb.append("function vaciarConClave(fecha, label) {\n");
+        if (requiereClave) {
+            sb.append("  var clave = document.getElementById('vaciar-clave').value;\n");
+            sb.append("  if (!clave) { alert('Introduce la contraseña de administrador.'); return; }\n");
+        } else {
+            sb.append("  var clave = '';\n");
+        }
+        sb.append("  var msg = fecha ? '¿Vaciar datos del ' + label + '?' : '¿Vaciar TODOS los datos del scraper?';\n");
+        sb.append("  if (!confirm(msg)) return;\n");
+        sb.append("  var url = '/vaciar';\n");
+        sb.append("  var sep = '?';\n");
+        sb.append("  if (fecha) { url += sep + 'fecha=' + encodeURIComponent(fecha); sep = '&'; }\n");
+        sb.append("  if (clave) { url += sep + 'clave=' + encodeURIComponent(clave); }\n");
+        sb.append("  window.location.href = url;\n");
+        sb.append("}\n");
+        sb.append("</script>\n");
         return sb.toString();
     }
 

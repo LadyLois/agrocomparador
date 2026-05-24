@@ -60,6 +60,14 @@ public class WebServer {
             }
 
             if (rutaBase.equals("/vaciar")) {
+                String adminPass = System.getenv().getOrDefault("ADMIN_PASSWORD", "");
+                String clave = params.containsKey("clave")
+                    ? URLDecoder.decode(params.get("clave"), "UTF-8") : "";
+                if (!adminPass.isEmpty() && !adminPass.equals(clave)) {
+                    enviarRedireccion(salida, "/?accion=error_clave");
+                    cliente.close();
+                    return;
+                }
                 String fechaVaciar = params.get("fecha");
                 if (fechaVaciar != null && !fechaVaciar.trim().isEmpty()) {
                     fechaVaciar = URLDecoder.decode(fechaVaciar, "UTF-8").trim();
