@@ -22,13 +22,25 @@
 | `agrocomparador.java` | Punto de entrada de la aplicación |
 | `agrocomparador/data/DatabaseConnection.java` | Gestión de conexión a MySQL |
 | `agrocomparador/data/ProductoDAO.java` | Consultas de productos en BD local |
-| `agrocomparador/data/ProductoDAOScraper.java` | Consultas de precios scrapeados |
+| `agrocomparador/data/ProductoDAOScraper.java` | Consultas de precios scrapeados (AGROPRECIOS / AGROPIZARRA) |
+| `agrocomparador/data/InformeSemanalDAO.java` | Importa y consulta los informes semanales del MAPA desde los Excel de la carpeta `excels/` |
+| `agrocomparador/data/MinisterioExcelDAO.java` | Importa y consulta el Excel de índices y precios percibidos del Ministerio |
+| `agrocomparador/data/XlsxReader.java` | Utilidad interna de parseo .xlsx (ZIP + XML, sin dependencias extra) |
 | `agrocomparador/business/ProductoService.java` | Lógica de negocio y filtrado |
 | `agrocomparador/scraper/AgrePreciosScraperDAO.java` | Scraper de agroprecios.com |
 | `agrocomparador/scraper/AgroPizarraScraperDAO.java` | Scraper de agropizarra.com |
 | `agrocomparador/scraper/ScraperScheduler.java` | Programador automático de scraping |
 | `agrocomparador/ui/HTMLBuilder.java` | Generación de la interfaz web |
 | `agrocomparador/ui/WebServer.java` | Servidor HTTP |
+
+### Datos del Ministerio (Excel)
+
+| Archivo | Descripción |
+|---|---|
+| `agrocomparador/excels/Indices y Precios Percibidos Agrarios (enero 2024-enero 2026).xlsx` | Precios percibidos agrarios mensuales del Ministerio (importado por `MinisterioExcelDAO`) |
+| `agrocomparador/excels/Informe Semanal de Coyuntura S-01.xlsx` … `S-13.xlsx` | 13 informes semanales de coyuntura del MAPA (importados por `InformeSemanalDAO`) |
+
+> Sin esta carpeta la aplicación arranca pero no tiene datos del Ministerio ni de los informes semanales.
 
 ### Librerías (JARs)
 
@@ -71,6 +83,8 @@ Tablas necesarias en MySQL (generadas por `migrate_schema.sql`):
 | `productos` | Catálogo de productos (nombre, variedad) |
 | `fuentes` | Fuentes de precios (nombre de la subasta/mercado) |
 | `precios` | Registros de precios con fecha y origen (AGROPRECIOS / AGROPIZARRA) |
+| `precios_ministerio` | Índices y precios percibidos agrarios mensuales (importados desde Excel del Ministerio) |
+| `informes_semanales` | Datos de los informes semanales de coyuntura del MAPA (importados desde Excel) |
 
 ---
 
@@ -148,4 +162,4 @@ bash scripts/execution/run_production.sh
 
 ---
 
-*Generado el 2026-05-14*
+*Actualizado el 2026-05-26*
